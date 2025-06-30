@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3 uid="uid://bxg4ygy5glq3u"]
+
+[ext_resource type="PackedScene" uid="uid://cg46m5dw8kaqr" path="res://src/bones.glb" id="1_wqod4"]
+
+[sub_resource type="JointConstraints" id="JointConstraints_wqod4"]
+min_angle = Vector3(-90, 0, 0)
+max_angle = Vector3(90, 0, 0)
+stiffness = 0.99
+
+[sub_resource type="JointConstraints" id="JointConstraints_y1kmo"]
+min_angle = Vector3(-120, -90, -45)
+max_angle = Vector3(120, 90, 45)
+stiffness = 0.99
+
+[sub_resource type="JointConstraints" id="JointConstraints_1g4hq"]
+min_angle = Vector3(-45, 0, -50)
+max_angle = Vector3(45, 0, 50)
+
+[node name="bones" instance=ExtResource("1_wqod4")]
+
+[node name="LightIKPlugin" type="LightIKPlugin" parent="Armature/Skeleton3D" index="0"]
+skeleton_root_bone = "Bone.001"
+skeleton_tip_bone = "Bone.005_leaf"
+skeleton_target = NodePath("../../../Marker3D")
+constraints_constraints_array = Array[JointConstraints]([null, SubResource("JointConstraints_wqod4"), SubResource("JointConstraints_y1kmo"), SubResource("JointConstraints_1g4hq"), null, null])
+help_show_helpers = true
+
+[node name="Marker3D" type="Marker3D" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.81207, 1.31671)

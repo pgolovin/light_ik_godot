@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bcaesl7oa2s1u"]
+
+[ext_resource type="PackedScene" uid="uid://bxg4ygy5glq3u" path="res://bones.tscn" id="1_ig7tw"]
+
+[node name="Node3D" type="Node3D"]
+
+[node name="bones" parent="." instance=ExtResource("1_ig7tw")]
