@@ -51,9 +51,12 @@ private:
     int32_t                 m_tipBone = -1;
 
     NodePath                m_targetPath;    
+    Node3D*                 m_target;
     TypedArray<JointConstraints> m_constraintsArray;
     std::vector<int32_t>    m_boneChain;
 
+    LightIK::LightIK        m_lightIKCore;
+    
     VisualHelper*           m_helper;
     bool                    m_simulate      = true;
     bool                    m_showHelpers   = false;

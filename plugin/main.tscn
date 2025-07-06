@@ -5,3 +5,9 @@
 [node name="Node3D" type="Node3D"]
 
 [node name="bones" parent="." instance=ExtResource("1_ig7tw")]
+transform = Transform3D(0.496717, -0.564482, 0.659267, 0.867913, 0.323059, -0.377306, 0, 0.759601, 0.65039, 3.9327, 3.37191, -4.13124)
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.183775, -0.199303, 0.962551, -0.0231161, 0.978082, 0.206932, -0.982697, -0.0602793, 0.17514, 10.3275, 5.84441, 0)
+current = true
+fov = 37.8493

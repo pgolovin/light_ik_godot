@@ -33,6 +33,7 @@ void LightIKPlugin::_bind_methods()
     DECLARE_PROPERTY(LightIKPlugin, show_helpers,  (Variant::BOOL), help);
 }
 
+////////////////////////////////////////////// properties definition
 void LightIKPlugin::set_simulate(const bool& animate) 
 {
     m_simulate = animate;
@@ -114,6 +115,8 @@ TypedArray<JointConstraints> LightIKPlugin::get_constraints_array() const
 void LightIKPlugin::set_target(const NodePath& target_path) 
 {
     m_targetPath = target_path;
+    // no need to update target if object is not constructed or path is empty. just drop it to nullptr
+    m_target = (!m_targetPath.is_empty() && is_node_ready()) ? get_node<Node3D>(m_targetPath) : nullptr;
 }
 NodePath LightIKPlugin::get_target() const 
 {
@@ -123,7 +126,7 @@ NodePath LightIKPlugin::get_target() const
 LightIKPlugin::LightIKPlugin()
     : m_helper(memnew(VisualHelper))
 {
-    add_child(m_helper);
+
 }
 
 LightIKPlugin::~LightIKPlugin()
@@ -131,20 +134,28 @@ LightIKPlugin::~LightIKPlugin()
 
 }
 
+////////////////////////////////////////////// godot interface
 void LightIKPlugin::_ready()
 {
-    // on object initialization the skeleton doesn'o't exists, 
-    // so parameters should be updated at the moment the object is constructed
+    add_child(m_helper);
+    m_helper->reparent(this);
+    m_helper->set_owner(this);
+    // on object initialization the skeleton doesn't exists, 
+    // so parameters should be updated at the moment the object is fully constructed
     assert (get_skeleton());
     if (m_rootBoneName != "")
     {
-
         m_rootBone = get_skeleton()->find_bone(m_rootBoneName);
     }
     if (m_tipBoneName != "")
     {
         m_tipBone = get_skeleton()->find_bone(m_tipBoneName);
     }
+    if (!m_targetPath.is_empty())
+    {
+        m_target = !m_targetPath.is_empty() ? get_node<Node3D>(m_targetPath) : nullptr;
+    }
+
     if (UpdateBoneChain())
     {
         UpdateVisualHelperData();
@@ -153,6 +164,15 @@ void LightIKPlugin::_ready()
 
 void LightIKPlugin::_process(double delta)
 {
+    Vector3 targetPosition = m_target ? get_skeleton()->get_global_transform().xform_inv(m_target->get_global_position()) : Vector3{0,0,0};
+
+    m_lightIKCore.SetTargetPosition(LightIK::Vector(targetPosition.x, targetPosition.y, targetPosition.z));
+
+    if (m_simulate && m_lightIKCore.UpdateChainPosition())
+    {
+        // update bone positions
+    }
+
     UpdateEditorData();
 }
 
@@ -168,6 +188,8 @@ void LightIKPlugin::_validate_property(godot::PropertyInfo& info)
     }
 }
 
+////////////////////////////////////////////// Editor functions
+
 void LightIKPlugin::ValidateRootBone(PropertyInfo& info)
 {
     info.hint = PROPERTY_HINT_ENUM;
@@ -182,8 +204,9 @@ void LightIKPlugin::ValidateRootBone(PropertyInfo& info)
         return;
     }
 
-    // list all parent bones from current tip to skeleton root
-    int32_t bone = m_tipBone;
+    assert(m_tipBone != m_rootBone);
+    // list all parent bones from current tip (excluding) to skeleton root
+    int32_t bone = get_skeleton()->get_bone_parent(m_tipBone);
     info.hint_string = "";
     while (bone >= 0)
     {
@@ -208,9 +231,14 @@ void LightIKPlugin::ValidateTipBone(PropertyInfo& info)
         return;
     }
     
+    assert(m_tipBone != m_rootBone);
     std::stack<int32_t> boneStack;
     // allow to chose any child bone from the selected root
-    boneStack.emplace(m_rootBone);
+    const auto& bones = get_skeleton()->get_bone_children(m_rootBone);
+    for (int32_t bone : bones)
+    {
+        boneStack.emplace(bone);
+    }
     // create  the list of all child bones from current to all branch leaves
     // avoid recursion. create the stack of bones and process it.
     
@@ -263,7 +291,8 @@ void LightIKPlugin::MakeConstraints()
         UtilityFunctions::push_error("Bones ", m_rootBoneName, " and ", m_tipBoneName, " are not on the same branch.");
         return;
     }
-    m_constraintsArray.resize(m_boneChain.size());
+    // the last bone is the tip. it is not used for calculations
+    m_constraintsArray.resize(m_boneChain.size() - 1);
     UpdateVisualHelperData();
 }
 
@@ -277,8 +306,6 @@ void LightIKPlugin::UpdateVisualHelperData()
     {
         bones.emplace_back(get_skeleton()->get_bone_global_pose(boneId));
     }
-
-    // send the array to visualizer
     m_helper->SetConstraintsInfo(m_constraintsArray, bones);
 }
 
@@ -290,6 +317,12 @@ void LightIKPlugin::UpdateEditorData()
         JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[c]);
         updateRequired = updateRequired || (constraint && constraint->IsDirty());
     }
+    
+    // check if target position had been changed to draw the direction line
+    Transform3D targetPosition = m_target ? m_target->get_global_transform() : Transform3D();
+    m_helper->SetTargetPosition(get_skeleton()->get_global_transform(), targetPosition);
+
+    // if array data was modified, request the update of constraints visualization
     if (updateRequired)
     {
         UpdateVisualHelperData();

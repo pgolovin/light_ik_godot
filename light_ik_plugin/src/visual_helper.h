@@ -14,8 +14,7 @@ class StandardMaterial3D;
 
 struct BoneInfo
 {
-    Vector3 position{0,0,0};
-    Vector3 direction{0,0,0};
+    Transform3D position;
     Vector3 minAngles{0,0,0};
     Vector3 maxAngles{0,0,0};
     float   stiffness = 0;
@@ -32,6 +31,7 @@ public:
     ~VisualHelper();
 
     void SetConstraintsInfo(const TypedArray<JointConstraints>& info, const std::vector<Transform3D>& bones);
+    void SetTargetPosition(const Transform3D& skeletonOrigin, const Transform3D& target);
 
 public: // godot overrides
     void _ready() override;
@@ -40,8 +40,11 @@ public: // godot overrides
 private:
 
     void AddRootBoneMarker();
+    void AddTipMarker();
+    void LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, Color color);
     void AddConstraint(const BoneInfo& constraint);
-    void AddConstraintMarker(float minAngle, float maxAngle, const Vector3& position, const Vector3& axis, Color color);
+    void AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, const Vector3& axis, Color color);
+    void AddDirectionLine();
 
     std::vector<BoneInfo>   m_boneInfoArray;
     Ref<ImmediateMesh>      m_helpersGeometry = nullptr;
@@ -49,6 +52,9 @@ private:
     size_t                  m_pointsPerMarker = 32;
     float                   m_radiusJoint = 0.2f;
     float                   m_radiusRoot = 0.5f;
+    Transform3D             m_targetPosition;
+    Transform3D             m_skeletonPosition;
+    bool                    m_updateRequired{false};
 };
 
 }
