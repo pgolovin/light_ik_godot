@@ -7,9 +7,16 @@
 #include <godot_cpp/classes/skeleton3d.hpp>
 
 #include <stack>
+#include <glm/ext/scalar_constants.hpp>
 
 namespace godot
 {
+    
+static Vector3 FromLightIKVector(const LightIK::Vector& src)
+{
+    return Vector3{(real_t)src.x, (real_t)src.y, (real_t)src.z};
+}
+
 void LightIKPlugin::_bind_methods()
 {
     ADD_GROUP("IK Settings", "skeleton_");
@@ -37,6 +44,11 @@ void LightIKPlugin::_bind_methods()
 void LightIKPlugin::set_simulate(const bool& animate) 
 {
     m_simulate = animate;
+    if (!m_simulate && get_skeleton())
+    {
+        get_skeleton()->clear_bones_global_pose_override();
+    }
+
 }
 bool LightIKPlugin::get_simulate() const 
 {
@@ -158,22 +170,42 @@ void LightIKPlugin::_ready()
 
     if (UpdateBoneChain())
     {
+        UpdateIKData();
         UpdateVisualHelperData();
     }
 }
 
-void LightIKPlugin::_process(double delta)
+void LightIKPlugin::_process_modification()
 {
+    if (!is_inside_tree())
+    {
+        return;
+    }
+
     Vector3 targetPosition = m_target ? get_skeleton()->get_global_transform().xform_inv(m_target->get_global_position()) : Vector3{0,0,0};
 
     m_lightIKCore.SetTargetPosition(LightIK::Vector(targetPosition.x, targetPosition.y, targetPosition.z));
 
     if (m_simulate && m_lightIKCore.UpdateChainPosition())
     {
-        // update bone positions
+        // update bone positions: 
+        //TODO: get quaternion in local to parent bone coordinates... 
+        std::vector<LightIK::Quaternion> overrides = m_lightIKCore.GetDeltaRotations();
+
+        LightIK::Vector step1 = overrides.front() * LightIK::Vector{0,1,0};
+
+        for (size_t b = 0; b < overrides.size(); ++b)
+        {
+            const auto& quat = overrides[b];
+            Quaternion q{(real_t)quat.x, (real_t)quat.y, (real_t)quat.z, (real_t)quat.w};
+            get_skeleton()->set_bone_pose_rotation(m_boneChain[b], q);
+
+            UtilityFunctions::prints("position of bone", b,  get_skeleton()->get_bone_global_pose(m_boneChain[b]).origin);
+            UtilityFunctions::prints("                ", b,  q);
+        }
     }
 
-    UpdateEditorData();
+    UpdateEditorData(true);
 }
 
 void LightIKPlugin::_validate_property(godot::PropertyInfo& info)
@@ -293,7 +325,31 @@ void LightIKPlugin::MakeConstraints()
     }
     // the last bone is the tip. it is not used for calculations
     m_constraintsArray.resize(m_boneChain.size() - 1);
+    UpdateIKData();
     UpdateVisualHelperData();
+}
+
+void LightIKPlugin::UpdateIKData()
+{
+    m_lightIKCore.Reset();
+    if (m_boneChain.empty())
+    {
+        return;
+    }
+    Vector3 base = get_skeleton()->get_bone_global_pose(m_boneChain.front()).origin;
+    auto q = get_skeleton()->get_bone_pose_rotation(m_boneChain.front());
+
+    m_lightIKCore.SetRootPosition(LightIK::Vector(base.x, base.y, base.z));
+    for (size_t b = 1; b < m_boneChain.size(); ++b)
+    {        
+        q               = get_skeleton()->get_bone_pose_rotation(m_boneChain[b - 1]);
+        Vector3 origin  = get_skeleton()->get_bone_global_pose(m_boneChain[b]).origin;
+        real_t length    = (origin - base).length();
+        m_lightIKCore.AddBone(length, LightIK::Quaternion{ (LightIK::real)q.w, (LightIK::real)q.x, (LightIK::real)q.y, (LightIK::real)q.z});
+        base            = origin;
+
+    }
+    m_lightIKCore.CompleteChain();
 }
 
 void LightIKPlugin::UpdateVisualHelperData()
@@ -309,9 +365,8 @@ void LightIKPlugin::UpdateVisualHelperData()
     m_helper->SetConstraintsInfo(m_constraintsArray, bones);
 }
 
-void LightIKPlugin::UpdateEditorData()
+void LightIKPlugin::UpdateEditorData(bool updateRequired)
 {
-    bool updateRequired = false;
     for (size_t c = 0; c < m_constraintsArray.size(); ++c)
     {
         JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[c]);

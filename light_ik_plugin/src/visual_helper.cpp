@@ -7,7 +7,7 @@
 #include <godot_cpp/classes/standard_material3d.hpp>
 
 #include <glm/glm.hpp>
-#include <glm/ext/scalar_constants.inl>
+#include <glm/ext/scalar_constants.hpp>
 
 #include <array>
 
@@ -71,6 +71,21 @@ void VisualHelper::SetTargetPosition(const Transform3D& skeletonOrigin, const Tr
     m_skeletonPosition  = skeletonOrigin;
 }
 
+size_t VisualHelper::AddDebugLine(const std::vector<Vector3>& line, size_t index)
+{
+    if (index < m_debugLines.size())
+    {
+        m_debugLines[index].assign(line.begin(), line.end());
+    }
+    else 
+    {
+        index = m_debugLines.size();
+        auto& data = m_debugLines.emplace_back();
+        data.assign(line.begin(), line.end());
+    }
+    return index;
+}
+
 void VisualHelper::_ready()
 {
     
@@ -83,34 +98,35 @@ void VisualHelper::_process(double delta)
         return;
     }
     // update data only if something really changed.
-    m_updateRequired = false;
-    m_helpersGeometry->clear_surfaces();
-    
-    AddRootBoneMarker();
-    for (const auto& constraint : m_boneInfoArray)
-    {
-        AddConstraint(constraint);
-    }
-    AddTipMarker();
-    AddDirectionLine();
+    // m_updateRequired = false;
+    // m_helpersGeometry->clear_surfaces();
+    // 
+    // AddRootBoneMarker();
+    // for (const auto& constraint : m_boneInfoArray)
+    // {
+    //     AddConstraint(constraint);
+    // }
+    // AddTipMarker();
+    // AddDirectionLine();
+    // AddDebugLines();
 }
 
 void VisualHelper::AddRootBoneMarker()
 {
     static std::vector<Vector3> rectangleVertices = {Vector3{1, 0, 1}, {1, 0, -1}, {-1, 0, -1}, {-1, 0, 1}, {1, 0, 1}};
-    LineStripFromVector(rectangleVertices, m_boneInfoArray.front().position, Color::hex(0xFF22FFFF));
+    LineStripFromVector(rectangleVertices, m_boneInfoArray.front().position, m_radiusRoot, Color::hex(0xFF22FFFF));
 }
 
 void VisualHelper::AddTipMarker()
 {
-    static std::vector<Vector3> arrowVertices = {Vector3{0, 0, 0}, {0.5, 0, 0}, {0, 1, 0}, {-0.5, 0, 0}, {0, 0, 0}, {0, 0, 0.5}, {0, 1, 0}, {0, 0, -0.5}, {0,0,0}};
+    static std::vector<Vector3> arrowVertices = {Vector3{0, -1, 0}, {0.5, -1, 0}, {0, 0, 0}, {-0.5, -1, 0}, {0, -1, 0}, {0, -1, 0.5}, {0, 0, 0}, {0, -1, -0.5}, {0,-1,0}};
     assert(m_boneInfoArray.size() > 1);
     //the transform of the tip consists of position of the last joint and orientation of pre-last bone
     Transform3D tipPosition = Transform3D(m_boneInfoArray[m_boneInfoArray.size() - 2].position.basis, m_boneInfoArray.back().position.origin);
-    LineStripFromVector(arrowVertices, tipPosition, Color::hex(0x22FF22FF));
+    LineStripFromVector(arrowVertices, tipPosition, m_radiusRoot, Color::hex(0x22FF22FF));
 }
 
-void VisualHelper::LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, Color color)
+void VisualHelper::LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, float scale, Color color)
 {
     Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
     material->set_albedo(color);
@@ -119,7 +135,7 @@ void VisualHelper::LineStripFromVector(const std::vector<Vector3>& strip, const 
     m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
     for (const auto& vertex : strip)
     {
-        m_helpersGeometry->surface_add_vertex(position.xform(m_radiusRoot * vertex));
+        m_helpersGeometry->surface_add_vertex(position.xform(scale * vertex));
     }
     m_helpersGeometry->surface_end();
 }
@@ -138,7 +154,7 @@ void VisualHelper::AddConstraintMarker(float minAngle, float maxAngle, const Tra
     material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
     m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
 
-    bool needRotation = axis.length_squared() > LightIK::DELTA;
+    bool needRotation = axis.length_squared() > LightIK::EPSILON;
 
     for (size_t i = 0; i < m_pointsPerMarker; ++i)
     {
@@ -187,6 +203,16 @@ void VisualHelper::AddDirectionLine()
         m_helpersGeometry->surface_add_vertex(start + direction * glm::min(dashSize * i + dashSize/2.f, distance));
     }
     m_helpersGeometry->surface_end();
+}
+
+void VisualHelper::AddDebugLines()
+{
+    //the transform of the tip consists of position of the last joint and orientation of pre-last bone
+    Transform3D offset = Transform3D();
+    for (const auto& line : m_debugLines)
+    {
+        LineStripFromVector(line, offset, 1, Color::hex(0xAAAA22FF));
+    }
 }
 
 }

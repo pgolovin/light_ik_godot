@@ -30,18 +30,21 @@ public:
     ~LightIKPlugin();
 
     void _ready() override;
-    void _process(double delta) override;
+    void _process_modification() override;
     void _validate_property(godot::PropertyInfo& info);
 
-    void UpdateEditorData();
+    void UpdateEditorData(bool updateRequired);
 protected:
     static void _bind_methods();
 
 private:
+    bool UpdateBoneChain();    
     void MakeConstraints();
+    void UpdateIKData();
+
     void ValidateRootBone(PropertyInfo& info);
     void ValidateTipBone(PropertyInfo& info);
-    bool UpdateBoneChain();
+    
     void UpdateVisualHelperData();
 
     String                  m_rootBoneName;
@@ -57,8 +60,10 @@ private:
 
     LightIK::LightIK        m_lightIKCore;
     
+    real_t                  m_time = 0;
     VisualHelper*           m_helper;
     bool                    m_simulate      = true;
+    bool                    m_printed       = true;
     bool                    m_showHelpers   = false;
 };
 

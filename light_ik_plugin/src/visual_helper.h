@@ -32,6 +32,7 @@ public:
 
     void SetConstraintsInfo(const TypedArray<JointConstraints>& info, const std::vector<Transform3D>& bones);
     void SetTargetPosition(const Transform3D& skeletonOrigin, const Transform3D& target);
+    size_t AddDebugLine(const std::vector<Vector3>& line, size_t index = 0xFFFFFF);
 
 public: // godot overrides
     void _ready() override;
@@ -41,10 +42,11 @@ private:
 
     void AddRootBoneMarker();
     void AddTipMarker();
-    void LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, Color color);
+    void LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, float scale, Color color);
     void AddConstraint(const BoneInfo& constraint);
     void AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, const Vector3& axis, Color color);
     void AddDirectionLine();
+    void AddDebugLines();
 
     std::vector<BoneInfo>   m_boneInfoArray;
     Ref<ImmediateMesh>      m_helpersGeometry = nullptr;
@@ -55,6 +57,8 @@ private:
     Transform3D             m_targetPosition;
     Transform3D             m_skeletonPosition;
     bool                    m_updateRequired{false};
+
+     std::vector<std::vector<Vector3>> m_debugLines;
 };
 
 }
