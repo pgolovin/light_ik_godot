@@ -46,15 +46,15 @@ void VisualHelper::SetConstraintsInfo(const TypedArray<JointConstraints>& info, 
         // TODO: add partial constraints
         if (constraint)
         {
-            info.minAngles  = constraint->get_min_angle() / 180.f * glm::pi<float>();
-            info.maxAngles  = constraint->get_max_angle() / 180.f * glm::pi<float>();
-            info.stiffness  = constraint->get_stiffness();
+            info.minAngles      = constraint->get_min_angle() / 180.f * glm::pi<float>();
+            info.maxAngles      = constraint->get_max_angle() / 180.f * glm::pi<float>();
+            info.flexibility    = constraint->get_flexibility();
         }
         else
         {
-            info.minAngles  = {-glm::pi<float>(), -glm::pi<float>(), -glm::pi<float>()};
-            info.maxAngles  = {glm::pi<float>(), glm::pi<float>(), glm::pi<float>()};
-            info.stiffness  = 0;
+            info.minAngles      = {-glm::pi<float>(), -glm::pi<float>(), -glm::pi<float>()};
+            info.maxAngles      = {glm::pi<float>(), glm::pi<float>(), glm::pi<float>()};
+            info.flexibility    = 1;
         }
     }
     // Add tip bone

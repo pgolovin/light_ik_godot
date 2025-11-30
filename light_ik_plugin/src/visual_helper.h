@@ -17,7 +17,7 @@ struct BoneInfo
     Transform3D position;
     Vector3 minAngles{0,0,0};
     Vector3 maxAngles{0,0,0};
-    float   stiffness = 0;
+    float   flexibility = 1;
     bool    constrained = false;
 };
 

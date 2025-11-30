@@ -9,7 +9,7 @@ void JointConstraints::_bind_methods()
 {
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, min_angle, Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, max_angle, Variant::VECTOR3);
-    DECLARE_UNSCOPED_PROPERTY(JointConstraints, stiffness, Variant::FLOAT);
+    DECLARE_UNSCOPED_PROPERTY(JointConstraints, flexibility, Variant::FLOAT);
 }
 
 void JointConstraints::set_min_angle(const Vector3& min_angle) 
@@ -34,16 +34,16 @@ Vector3 JointConstraints::get_max_angle() const
     return m_angleMax;
 }
 
-void JointConstraints::set_stiffness(const double& stiffness) 
+void JointConstraints::set_flexibility(const double& stiffness) 
 { 
-    double clampedStiffness = glm::clamp(stiffness, 0.0, 0.99);
-    m_dirtyFlag = m_dirtyFlag || (m_stiffness != clampedStiffness);
-    m_stiffness = clampedStiffness;
+    double clampedStiffness = glm::clamp(stiffness, 0.0, 1.0);
+    m_dirtyFlag = m_dirtyFlag || (m_flexibility != clampedStiffness);
+    m_flexibility = clampedStiffness;
 }
 
-double JointConstraints::get_stiffness() const 
+double JointConstraints::get_flexibility() const 
 {
-    return m_stiffness;
+    return m_flexibility;
 }
 
 bool JointConstraints::IsDirty()

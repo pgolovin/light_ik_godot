@@ -336,17 +336,24 @@ void LightIKPlugin::UpdateIKData()
     {
         return;
     }
-    Vector3 base = get_skeleton()->get_bone_global_pose(m_boneChain.front()).origin;
-    auto q = get_skeleton()->get_bone_pose_rotation(m_boneChain.front());
+    Vector3 base    = get_skeleton()->get_bone_global_pose(m_boneChain.front()).origin;
+    auto q          = get_skeleton()->get_bone_pose_rotation(m_boneChain.front());
 
     m_lightIKCore.SetRootPosition(LightIK::Vector(base.x, base.y, base.z));
     for (size_t b = 1; b < m_boneChain.size(); ++b)
     {        
         q               = get_skeleton()->get_bone_pose_rotation(m_boneChain[b - 1]);
         Vector3 origin  = get_skeleton()->get_bone_global_pose(m_boneChain[b]).origin;
-        real_t length    = (origin - base).length();
+        real_t length   = (origin - base).length();
         m_lightIKCore.AddBone(length, LightIK::Quaternion{ (LightIK::real)q.w, (LightIK::real)q.x, (LightIK::real)q.y, (LightIK::real)q.z});
         base            = origin;
+
+        JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[b - 1]);
+        if (constraint)
+        {
+            LightIK::Constraints c{constraint->get_flexibility()};
+            m_lightIKCore.SetConstraint(b - 1, std::move(c));
+        }
 
     }
     m_lightIKCore.CompleteChain();
@@ -380,6 +387,16 @@ void LightIKPlugin::UpdateEditorData(bool updateRequired)
     // if array data was modified, request the update of constraints visualization
     if (updateRequired)
     {
+        for (size_t i = 0; i < m_constraintsArray.size(); ++i)
+        {
+            JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[i]);
+            if (constraint)
+            {
+                LightIK::Constraints c{constraint->get_flexibility()};
+                m_lightIKCore.SetConstraint(i, std::move(c));
+            }
+        }
+
         UpdateVisualHelperData();
     }
 }

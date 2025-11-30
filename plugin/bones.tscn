@@ -1,20 +1,58 @@
-[gd_scene load_steps=8 format=3 uid="uid://bxg4ygy5glq3u"]
+[gd_scene load_steps=9 format=3 uid="uid://bxg4ygy5glq3u"]
 
 [ext_resource type="PackedScene" uid="uid://cg46m5dw8kaqr" path="res://src/bones.glb" id="1_wqod4"]
 
 [sub_resource type="JointConstraints" id="JointConstraints_wqod4"]
 min_angle = Vector3(-90, 0, 0)
 max_angle = Vector3(90, 0, 0)
-stiffness = 0.99
 
 [sub_resource type="JointConstraints" id="JointConstraints_y1kmo"]
 min_angle = Vector3(-45, -120, -22.5)
 max_angle = Vector3(45, 120, 22.5)
-stiffness = 0.99
+flexibility = 1.0
 
 [sub_resource type="JointConstraints" id="JointConstraints_1g4hq"]
 min_angle = Vector3(-45, 0, -50)
 max_angle = Vector3(45, 0, 50)
+
+[sub_resource type="JointConstraints" id="JointConstraints_ro0j0"]
+flexibility = 0.5
+
+[sub_resource type="Animation" id="Animation_1g4hq"]
+length = 0.001
+tracks/0/type = "bezier"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Marker3D:position:x")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(1.8771902, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Marker3D:position:y")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(4.8784184, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+tracks/2/type = "bezier"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Marker3D:position:z")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(5.1654053, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
 
 [sub_resource type="Animation" id="Animation_wqod4"]
 resource_name = "new_animation"
@@ -53,42 +91,6 @@ tracks/2/keys = {
 "times": PackedFloat32Array(0, 1)
 }
 
-[sub_resource type="Animation" id="Animation_1g4hq"]
-length = 0.001
-tracks/0/type = "bezier"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Marker3D:position:x")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"handle_modes": PackedInt32Array(0),
-"points": PackedFloat32Array(1.8771902, -0.25, 0, 0.25, 0),
-"times": PackedFloat32Array(0)
-}
-tracks/1/type = "bezier"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Marker3D:position:y")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"handle_modes": PackedInt32Array(0),
-"points": PackedFloat32Array(4.8784184, -0.25, 0, 0.25, 0),
-"times": PackedFloat32Array(0)
-}
-tracks/2/type = "bezier"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("Marker3D:position:z")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"handle_modes": PackedInt32Array(0),
-"points": PackedFloat32Array(5.1654053, -0.25, 0, 0.25, 0),
-"times": PackedFloat32Array(0)
-}
-
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_y1kmo"]
 _data = {
 &"RESET": SubResource("Animation_1g4hq"),
@@ -101,7 +103,7 @@ _data = {
 skeleton_root_bone = "Bone.001"
 skeleton_tip_bone = "Bone.005_leaf"
 skeleton_target = NodePath("../../../Marker3D")
-constraints_constraints_array = Array[JointConstraints]([null, SubResource("JointConstraints_wqod4"), SubResource("JointConstraints_y1kmo"), SubResource("JointConstraints_1g4hq"), null])
+constraints_constraints_array = Array[JointConstraints]([null, SubResource("JointConstraints_wqod4"), SubResource("JointConstraints_y1kmo"), SubResource("JointConstraints_1g4hq"), SubResource("JointConstraints_ro0j0")])
 help_show_helpers = true
 
 [node name="Marker3D" type="Marker3D" parent="." index="1"]
