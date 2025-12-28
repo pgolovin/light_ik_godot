@@ -190,13 +190,13 @@ void LightIKPlugin::_process_modification()
     {
         // update bone positions: 
         //TODO: get quaternion in local to parent bone coordinates... 
-        std::vector<LightIK::Quaternion> overrides = m_lightIKCore.GetDeltaRotations();
+        const auto& overrides = m_lightIKCore.GetDeltaRotations();
 
-        LightIK::Vector step1 = overrides.front() * LightIK::Vector{0,1,0};
+        LightIK::Vector step1 = *overrides.front() * LightIK::Vector{0,1,0};
 
         for (size_t b = 0; b < overrides.size(); ++b)
         {
-            const auto& quat = overrides[b];
+            const auto& quat = *overrides[b];
             Quaternion q{(real_t)quat.x, (real_t)quat.y, (real_t)quat.z, (real_t)quat.w};
             get_skeleton()->set_bone_pose_rotation(m_boneChain[b], q);
 
