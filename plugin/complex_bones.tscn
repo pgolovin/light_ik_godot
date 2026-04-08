@@ -1,0 +1,34 @@
+[gd_scene load_steps=6 format=3 uid="uid://dlj03rmo2y74m"]
+
+[ext_resource type="PackedScene" uid="uid://ctq3h73xsg3rn" path="res://src/complex_bones.glb" id="1_k8iyh"]
+
+[sub_resource type="ChainIKTarget" id="ChainIKTarget_k8iyh"]
+target = NodePath("../../../LeftLegTarget")
+root_bone = "left.pelvis"
+tip_bone = "left.foot"
+
+[sub_resource type="ChainIKBoneLink" id="ChainIKBoneLink_k8iyh"]
+target_bone = "left.pelvis-hip.dampher"
+root_bone = "left.shin-hip.dempher"
+tip_bone = "left.shin-hip.dempher"
+
+[sub_resource type="ChainIKTarget" id="ChainIKTarget_25apt"]
+target = NodePath("../../../RightLegTarget")
+root_bone = "right.pelvis"
+tip_bone = "right.foot"
+
+[sub_resource type="JointConstraints" id="JointConstraints_k8iyh"]
+bone = "left.ankle"
+
+[node name="complex_bones" instance=ExtResource("1_k8iyh")]
+
+[node name="LightIKPlugin" type="LightIKPlugin" parent="Armature/Skeleton3D" index="0"]
+help_show_helpers = true
+chains_bone_chains = Array[BoneChain]([SubResource("ChainIKTarget_k8iyh"), SubResource("ChainIKBoneLink_k8iyh"), SubResource("ChainIKTarget_25apt")])
+constraints_constraints_array = Array[JointConstraints]([SubResource("JointConstraints_k8iyh")])
+
+[node name="LeftLegTarget" type="Marker3D" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1856911, -6.301704, -1.0314023)
+
+[node name="RightLegTarget" type="Marker3D" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5361083, -5.9762793, 0.7781491)

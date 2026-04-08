@@ -2,6 +2,7 @@
 #include <gdextension_interface.h>
 
 #include "light_ik_plugin.h"
+#include "bone_chain.h"
 #include "joint_constraints.h"
 #include "visual_helper.h"
 
@@ -22,6 +23,9 @@ void initialize_example_module(ModuleInitializationLevel p_level)
     }
 
     GDREGISTER_CLASS(LightIKPlugin);
+    GDREGISTER_VIRTUAL_CLASS(BoneChain);
+    GDREGISTER_CLASS(ChainIKTarget);
+    GDREGISTER_CLASS(ChainIKBoneLink);
     GDREGISTER_CLASS(JointConstraints);
     GDREGISTER_INTERNAL_CLASS(VisualHelper);
 }

@@ -1,0 +1,27 @@
+[gd_scene load_steps=5 format=3 uid="uid://dsdauk7vl7dol"]
+
+[ext_resource type="PackedScene" uid="uid://cu5oe7ul6qe6g" path="res://test_bone.glb" id="1_3a7js"]
+
+[sub_resource type="ChainIKTarget" id="ChainIKTarget_ga1em"]
+target = NodePath("../../../Marker3D")
+root_bone = "Bone.001"
+tip_bone = "Bone.004"
+
+[sub_resource type="ChainIKBoneLink" id="ChainIKBoneLink_3a7js"]
+target_bone = "Bone.010"
+root_bone = "Bone.007"
+tip_bone = "Bone.007"
+
+[sub_resource type="ChainIKBoneLink" id="ChainIKBoneLink_ga1em"]
+target_bone = "Bone.007"
+root_bone = "Bone.010"
+tip_bone = "Bone.010"
+
+[node name="test_bone" instance=ExtResource("1_3a7js")]
+
+[node name="LightIKPlugin" type="LightIKPlugin" parent="Armature/Skeleton3D" index="0"]
+help_show_helpers = true
+chains_bone_chains = Array[BoneChain]([SubResource("ChainIKTarget_ga1em"), SubResource("ChainIKBoneLink_3a7js"), SubResource("ChainIKBoneLink_ga1em")])
+
+[node name="Marker3D" type="Marker3D" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7214465, 4.155508, 0)

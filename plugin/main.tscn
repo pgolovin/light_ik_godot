@@ -1,13 +1,13 @@
 [gd_scene load_steps=2 format=3 uid="uid://bcaesl7oa2s1u"]
 
-[ext_resource type="PackedScene" uid="uid://bxg4ygy5glq3u" path="res://bones.tscn" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://dlj03rmo2y74m" path="res://complex_bones.tscn" id="1_ig7tw"]
 
 [node name="Node3D" type="Node3D"]
-
-[node name="bones" parent="." instance=ExtResource("1_ig7tw")]
-transform = Transform3D(0.496717, -0.564482, 0.659267, 0.867913, 0.323059, -0.377306, 0, 0.759601, 0.65039, 3.9327, 3.37191, -4.13124)
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(0.183775, -0.199303, 0.962551, -0.0231161, 0.978082, 0.206932, -0.982697, -0.0602793, 0.17514, 10.3275, 5.84441, 0)
 current = true
 fov = 37.8493
+
+[node name="complex_bones" parent="." instance=ExtResource("1_ig7tw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.3314667, 0)

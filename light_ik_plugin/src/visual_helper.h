@@ -26,6 +26,7 @@ class VisualHelper : public MeshInstance3D
     GDCLASS(VisualHelper, MeshInstance3D)
 protected:
     static void _bind_methods() {};
+
 public:
     VisualHelper();
     ~VisualHelper();
@@ -33,6 +34,14 @@ public:
     void SetConstraintsInfo(const TypedArray<JointConstraints>& info, const std::vector<Transform3D>& bones);
     void SetTargetPosition(const Transform3D& skeletonOrigin, const Transform3D& target);
     size_t AddDebugLine(const std::vector<Vector3>& line, size_t index = 0xFFFFFF);
+
+    struct TipTarget
+    {
+        Vector3 tip;
+        Vector3 target;
+    };
+
+    void UpdateTipTargetInfo(const std::list<TipTarget>& tips);
 
 public: // godot overrides
     void _ready() override;
@@ -44,12 +53,14 @@ private:
     void AddTipMarker();
     void LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, float scale, Color color);
     void AddConstraint(const BoneInfo& constraint);
-    void AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, const Vector3& axis, Color color);
-    void AddDirectionLine();
+    void AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, float flexibility, const Vector3& axis, Color color);
+    void AddDashedLine(const Vector3& from, const Vector3& to);
     void AddDebugLines();
 
+    std::list<TipTarget>    m_tipTargets;
+
     std::vector<BoneInfo>   m_boneInfoArray;
-    Ref<ImmediateMesh>      m_helpersGeometry = nullptr;
+    Ref<ImmediateMesh>      m_helpersGeometry;
 
     size_t                  m_pointsPerMarker = 32;
     float                   m_radiusJoint = 0.2f;

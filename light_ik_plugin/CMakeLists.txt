@@ -2,6 +2,7 @@
 set(PLUGIN_HEADERS
     "src/helpers.h"
     "src/light_ik_plugin.h"
+    "src/bone_chain.h"
     "src/joint_constraints.h"
     "src/register_types.h"
     "src/visual_helper.h"
@@ -10,6 +11,7 @@ set(PLUGIN_HEADERS
 set(PLUGIN_SRC
     "src/light_ik_plugin.cpp"
     "src/joint_constraints.cpp"
+    "src/bone_chain.cpp"
     "src/register_types.cpp"
     "src/visual_helper.cpp"
 )

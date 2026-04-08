@@ -15,11 +15,9 @@ namespace godot
 {
 
 VisualHelper::VisualHelper()
-    : m_helpersGeometry(memnew(ImmediateMesh))
-    
 {
+    m_helpersGeometry.instantiate();
     set_cast_shadows_setting(GeometryInstance3D::ShadowCastingSetting::SHADOW_CASTING_SETTING_OFF);
-    set_mesh(m_helpersGeometry);
 }
 
 VisualHelper::~VisualHelper()
@@ -44,18 +42,18 @@ void VisualHelper::SetConstraintsInfo(const TypedArray<JointConstraints>& info, 
         info.position       = bones[c];
         info.constrained    = (constraint != nullptr);
         // TODO: add partial constraints
-        if (constraint)
-        {
-            info.minAngles      = constraint->get_min_angle() / 180.f * glm::pi<float>();
-            info.maxAngles      = constraint->get_max_angle() / 180.f * glm::pi<float>();
-            info.flexibility    = constraint->get_flexibility();
-        }
-        else
-        {
-            info.minAngles      = {-glm::pi<float>(), -glm::pi<float>(), -glm::pi<float>()};
-            info.maxAngles      = {glm::pi<float>(), glm::pi<float>(), glm::pi<float>()};
-            info.flexibility    = 1;
-        }
+        // if (constraint)
+        // {
+        //     info.minAngles      = constraint->get_min_angle() / 180.f * glm::pi<float>();
+        //     info.maxAngles      = constraint->get_max_angle() / 180.f * glm::pi<float>();
+        //     info.flexibility    = constraint->get_flexibility();
+        // }
+        // else
+        // {
+        //     info.minAngles      = {-glm::pi<float>(), -glm::pi<float>(), -glm::pi<float>()};
+        //     info.maxAngles      = {glm::pi<float>(), glm::pi<float>(), glm::pi<float>()};
+        //     info.flexibility    = 1;
+        // }
     }
     // Add tip bone
     auto& tip = m_boneInfoArray.emplace_back(BoneInfo());
@@ -88,7 +86,7 @@ size_t VisualHelper::AddDebugLine(const std::vector<Vector3>& line, size_t index
 
 void VisualHelper::_ready()
 {
-    
+    set_mesh(m_helpersGeometry);
 }
 
 void VisualHelper::_process(double delta)
@@ -98,9 +96,23 @@ void VisualHelper::_process(double delta)
         return;
     }
     // update data only if something really changed.
-    // m_updateRequired = false;
-    // m_helpersGeometry->clear_surfaces();
-    // 
+    m_updateRequired = false;
+    m_helpersGeometry->clear_surfaces();
+    
+    Ref<StandardMaterial3D> material;// = memnew(StandardMaterial3D);
+    material.instantiate();
+    material->set_albedo(Color::hex(0x22FF22FF));
+    material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
+
+    for (auto& tt : m_tipTargets)
+    {
+        AddDashedLine(tt.tip, tt.target);
+        // m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
+        // m_helpersGeometry->surface_add_vertex(tt.tip);
+        // m_helpersGeometry->surface_add_vertex(tt.target);
+        // m_helpersGeometry->surface_end();
+    }// 
+
     // AddRootBoneMarker();
     // for (const auto& constraint : m_boneInfoArray)
     // {
@@ -109,6 +121,16 @@ void VisualHelper::_process(double delta)
     // AddTipMarker();
     // AddDirectionLine();
     // AddDebugLines();
+}
+
+void VisualHelper::UpdateTipTargetInfo(const std::list<TipTarget>& tips)
+{
+    m_tipTargets.clear();
+    for (auto& tt : tips)
+    {
+        m_tipTargets.emplace_back(tt);
+    }
+    m_updateRequired = true;
 }
 
 void VisualHelper::AddRootBoneMarker()
@@ -128,7 +150,8 @@ void VisualHelper::AddTipMarker()
 
 void VisualHelper::LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, float scale, Color color)
 {
-    Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
+    Ref<StandardMaterial3D> material;
+    material.instantiate();
     material->set_albedo(color);
     material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
 
@@ -142,12 +165,12 @@ void VisualHelper::LineStripFromVector(const std::vector<Vector3>& strip, const 
 
 void VisualHelper::AddConstraint(const BoneInfo& constraint)
 {
-    AddConstraintMarker(constraint.minAngles.x, constraint.maxAngles.x, constraint.position, {0,0,0}, Color::hex(0xFF0000FF));
-    AddConstraintMarker(constraint.minAngles.y, constraint.maxAngles.y, constraint.position, {0,1,0}, Color::hex(0x55FF55FF));
-    AddConstraintMarker(constraint.minAngles.z, constraint.maxAngles.z, constraint.position, {1,0,0}, Color::hex(0x0000FFFF));
+    AddConstraintMarker(constraint.minAngles.x, constraint.maxAngles.x, constraint.position, constraint.flexibility, {0,0,0}, Color::hex(0xFF0000FF));
+    AddConstraintMarker(constraint.minAngles.y, constraint.maxAngles.y, constraint.position, constraint.flexibility, {0,1,0}, Color::hex(0x55FF55FF));
+    AddConstraintMarker(constraint.minAngles.z, constraint.maxAngles.z, constraint.position, constraint.flexibility, {1,0,0}, Color::hex(0x0000FFFF));
 }
 
-void VisualHelper::AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, const Vector3& axis, Color color)
+void VisualHelper::AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, float flexibility, const Vector3& axis, Color color)
 {
     Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
     material->set_albedo(color);
@@ -160,7 +183,7 @@ void VisualHelper::AddConstraintMarker(float minAngle, float maxAngle, const Tra
     {
         float t         = i / (m_pointsPerMarker - 1.f);
         float pos       = minAngle * t + maxAngle * (1 - t);
-        Vector3 vertex  = m_radiusJoint * Vector3{glm::sin(pos), glm::cos(pos), 0.f};
+        Vector3 vertex  = flexibility * m_radiusJoint * Vector3{glm::sin(pos), glm::cos(pos), 0.f};
         if (needRotation)
         {
             vertex.rotate(axis, glm::pi<float>()/2.f);
@@ -171,23 +194,15 @@ void VisualHelper::AddConstraintMarker(float minAngle, float maxAngle, const Tra
     m_helpersGeometry->surface_end();
 }
 
-void VisualHelper::AddDirectionLine()
+void VisualHelper::AddDashedLine(const Vector3& from, const Vector3& to)
 {
-    if (m_boneInfoArray.empty())
-    {
-        return;
-    }
-
     // setup the material
-    Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
+    Ref<StandardMaterial3D> material;
+    material.instantiate();
     material->set_albedo(Color::hex(0xFFaa55FF));
     material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
 
-    // calculate the distance from root bone to a target
-    Vector3 start = m_boneInfoArray.front().position.origin;
-    // the target position must be transferred to a local coordinates of the skeleton
-    Vector3 end   = m_skeletonPosition.xform_inv(m_targetPosition.origin);
-    Vector3 direction = end - start;
+    Vector3 direction = to - from;
     float distance = direction.length();
     direction.normalize();
 
@@ -199,8 +214,8 @@ void VisualHelper::AddDirectionLine()
     m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINES, material);
     for (size_t i = 0; i < steps; ++i)
     {
-        m_helpersGeometry->surface_add_vertex(start + direction * dashSize * i);
-        m_helpersGeometry->surface_add_vertex(start + direction * glm::min(dashSize * i + dashSize/2.f, distance));
+        m_helpersGeometry->surface_add_vertex(from + direction * dashSize * i);
+        m_helpersGeometry->surface_add_vertex(from + direction * glm::min(dashSize * i + dashSize/2.f, distance));
     }
     m_helpersGeometry->surface_end();
 }

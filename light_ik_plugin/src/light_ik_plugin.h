@@ -3,11 +3,13 @@
 #include "helpers.h"
 
 #include "light_ik/light_ik.h"
-#include "joint_constraints.h"
+#include "bone_chain.h"
 
 #include <godot_cpp/classes/skeleton_modifier3d.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/node_path.hpp>
+
+#include <list>
 
 namespace godot
 {
@@ -18,20 +20,20 @@ class LightIKPlugin : public SkeletonModifier3D
 {
     GDCLASS(LightIKPlugin, SkeletonModifier3D)
 
+    DEFINE_PROPERTY(int, iterations_count);
     DEFINE_PROPERTY(bool, simulate);
-    DEFINE_PROPERTY(String, root_bone);
-    DEFINE_PROPERTY(String, tip_bone);
-    DEFINE_PROPERTY(NodePath, target);
-    DEFINE_PROPERTY(TypedArray<JointConstraints>, constraints_array);
     DEFINE_PROPERTY(bool, show_helpers);
+    DEFINE_PROPERTY(TypedArray<BoneChain>, bone_chains);
+    DEFINE_PROPERTY(TypedArray<JointConstraints>, constraints_array);
 
 public:
     LightIKPlugin();
     ~LightIKPlugin();
 
     void _ready() override;
+    void _process(double delta) override;
     void _process_modification() override;
-    void _validate_property(godot::PropertyInfo& info);
+    //void _validate_property(godot::PropertyInfo& info);
 
     void UpdateEditorData(bool updateRequired);
 protected:
@@ -42,26 +44,29 @@ private:
     void MakeConstraints();
     void UpdateIKData();
 
-    void ValidateRootBone(PropertyInfo& info);
-    void ValidateTipBone(PropertyInfo& info);
-    
+    void BuildChains();
+    void BuildConstraints();
+
+    std::vector<LightIK::BoneDesc> BuildRootChain(int32_t tipBone);
+
     void UpdateVisualHelperData();
 
-    String                  m_rootBoneName;
-    int32_t                 m_rootBone = -1;
-
-    String                  m_tipBoneName;
-    int32_t                 m_tipBone = -1;
-
-    NodePath                m_targetPath;    
-    Node3D*                 m_target;
+    std::unique_ptr<LightIK::LightIK> m_controllerIK = nullptr;
     TypedArray<JointConstraints> m_constraintsArray;
-    std::vector<int32_t>    m_boneChain;
 
-    LightIK::LightIK        m_lightIKCore;
-    
+    struct NodeTarget
+    {
+        Node3D* target = nullptr;
+        LightIK::TargetPosition* pos;
+    };
+
+    TypedArray<BoneChain>   m_boneChains;
+    std::list<NodeTarget>              m_targets;
+    std::list<LightIK::TargetBone*>    m_links;
+
     real_t                  m_time = 0;
     VisualHelper*           m_helper;
+    int                     m_iterationsCount = 1;
     bool                    m_simulate      = true;
     bool                    m_printed       = true;
     bool                    m_showHelpers   = false;

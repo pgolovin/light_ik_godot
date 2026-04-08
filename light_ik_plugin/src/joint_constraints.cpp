@@ -7,43 +7,56 @@ namespace godot
 {
 void JointConstraints::_bind_methods()
 {
-    DECLARE_UNSCOPED_PROPERTY(JointConstraints, min_angle, Variant::VECTOR3);
-    DECLARE_UNSCOPED_PROPERTY(JointConstraints, max_angle, Variant::VECTOR3);
+    DECLARE_UNSCOPED_PROPERTY(JointConstraints, bone,        Variant::STRING);
+    DECLARE_UNSCOPED_PROPERTY(JointConstraints, min_angle,   Variant::VECTOR3);
+    DECLARE_UNSCOPED_PROPERTY(JointConstraints, max_angle,   Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, flexibility, Variant::FLOAT);
+}
+
+void JointConstraints::set_bone(const String& bone_name) 
+{ 
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.boneName != bone_name);
+    m_constraint.boneName = bone_name; 
+    notify_property_list_changed();
+}  
+
+String JointConstraints::get_bone() const 
+{
+    return m_constraint.boneName;
 }
 
 void JointConstraints::set_min_angle(const Vector3& min_angle) 
 { 
-    m_dirtyFlag = m_dirtyFlag || (m_angleMin != min_angle);
-    m_angleMin = min_angle; 
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.angleMin != min_angle);
+    m_constraint.angleMin = min_angle; 
 }  
 
 Vector3 JointConstraints::get_min_angle() const 
 {
-    return m_angleMin;
+    return m_constraint.angleMin;
 }
 
 void JointConstraints::set_max_angle(const Vector3& max_angle)
 {
-    m_dirtyFlag = m_dirtyFlag || (m_angleMax != max_angle);
-    m_angleMax = max_angle; 
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.angleMax != max_angle);
+    m_constraint.angleMax = max_angle; 
 }
 
 Vector3 JointConstraints::get_max_angle() const 
 {
-    return m_angleMax;
+    return m_constraint.angleMax;
 }
 
 void JointConstraints::set_flexibility(const double& stiffness) 
 { 
     double clampedStiffness = glm::clamp(stiffness, 0.0, 1.0);
-    m_dirtyFlag = m_dirtyFlag || (m_flexibility != clampedStiffness);
-    m_flexibility = clampedStiffness;
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.flexibility != clampedStiffness);
+    m_constraint.flexibility = clampedStiffness;
 }
 
 double JointConstraints::get_flexibility() const 
 {
-    return m_flexibility;
+    return m_constraint.flexibility;
 }
 
 bool JointConstraints::IsDirty()
@@ -51,6 +64,32 @@ bool JointConstraints::IsDirty()
     bool dirty = m_dirtyFlag;
     m_dirtyFlag = false;
     return dirty;
+}
+
+void JointConstraints::_validate_property(godot::PropertyInfo& info)
+{
+    if(!m_skeleton)
+    {
+        return;
+    }
+
+    if (info.name == String("bone"))
+    {
+        ValidateBone(info);
+    }
+}
+
+void JointConstraints::_ready(Skeleton3D* skeleton)
+{
+    m_skeleton = skeleton;
+}
+
+void JointConstraints::ValidateBone(PropertyInfo& info)
+{
+    info.hint = PROPERTY_HINT_ENUM;
+
+    // if root is not selected allow to chose any bone for tip
+    info.hint_string = m_skeleton->get_concatenated_bone_names();
 }
 
 }
