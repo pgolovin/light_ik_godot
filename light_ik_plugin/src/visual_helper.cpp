@@ -3,6 +3,9 @@
 #include "light_ik/light_ik.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/variant/quaternion.hpp>
+
 #include <godot_cpp/classes/immediate_mesh.hpp>
 #include <godot_cpp/classes/standard_material3d.hpp>
 
@@ -14,74 +17,29 @@
 namespace godot
 {
 
+inline Vector3 grad2rad(const Vector3 angles)
+{
+    return angles * (Math_PI / 180.);
+}
+
 VisualHelper::VisualHelper()
 {
     m_helpersGeometry.instantiate();
     set_cast_shadows_setting(GeometryInstance3D::ShadowCastingSetting::SHADOW_CASTING_SETTING_OFF);
+
+    MakeMaterial(m_targetLineMaterial,      Color::hex(0xFFaa55FF));
+    MakeMaterial(m_chainLineMaterial,       Color::hex(0x22FF22FF));
+    MakeMaterial(m_startMarkerMaterial,     Color::hex(0xFF22FFFF));
+    MakeMaterial(m_endMarkerMaterial,       Color::hex(0x22FF22FF));
+    MakeMaterial(m_targetMarkerMaterial,    Color::hex(0xFF2222FF));
+
+    MakeMaterial(m_jointMarkerMaterials[0], Color::hex(0xFF2222FF));
+    MakeMaterial(m_jointMarkerMaterials[1], Color::hex(0x22FF22FF));
+    MakeMaterial(m_jointMarkerMaterials[2], Color::hex(0x2222FFFF));
 }
 
 VisualHelper::~VisualHelper()
 {
-}
-
-void VisualHelper::SetConstraintsInfo(const TypedArray<JointConstraints>& info, const std::vector<Transform3D>& bones)
-{
-    m_boneInfoArray.clear();
-    if (0 == info.size() || info.size() != bones.size() - 1)
-    {
-        return;
-    }
-
-    m_boneInfoArray.resize(info.size());
-     // fill the bone constraints information from the constraints array size
-    for (size_t c = 0; c < info.size(); ++c)
-    {
-        JointConstraints* constraint = Object::cast_to<JointConstraints>(info[c]);
-        BoneInfo& info = m_boneInfoArray[c];
-
-        info.position       = bones[c];
-        info.constrained    = (constraint != nullptr);
-        // TODO: add partial constraints
-        // if (constraint)
-        // {
-        //     info.minAngles      = constraint->get_min_angle() / 180.f * glm::pi<float>();
-        //     info.maxAngles      = constraint->get_max_angle() / 180.f * glm::pi<float>();
-        //     info.flexibility    = constraint->get_flexibility();
-        // }
-        // else
-        // {
-        //     info.minAngles      = {-glm::pi<float>(), -glm::pi<float>(), -glm::pi<float>()};
-        //     info.maxAngles      = {glm::pi<float>(), glm::pi<float>(), glm::pi<float>()};
-        //     info.flexibility    = 1;
-        // }
-    }
-    // Add tip bone
-    auto& tip = m_boneInfoArray.emplace_back(BoneInfo());
-    tip.position = bones.back();
-
-    m_updateRequired = true;
-}
-
-void VisualHelper::SetTargetPosition(const Transform3D& skeletonOrigin, const Transform3D& target)
-{
-    m_updateRequired    = m_updateRequired || m_targetPosition != target || m_skeletonPosition != skeletonOrigin;
-    m_targetPosition    = target;
-    m_skeletonPosition  = skeletonOrigin;
-}
-
-size_t VisualHelper::AddDebugLine(const std::vector<Vector3>& line, size_t index)
-{
-    if (index < m_debugLines.size())
-    {
-        m_debugLines[index].assign(line.begin(), line.end());
-    }
-    else 
-    {
-        index = m_debugLines.size();
-        auto& data = m_debugLines.emplace_back();
-        data.assign(line.begin(), line.end());
-    }
-    return index;
 }
 
 void VisualHelper::_ready()
@@ -91,117 +49,92 @@ void VisualHelper::_ready()
 
 void VisualHelper::_process(double delta)
 {
-    if (!is_node_ready() || !m_updateRequired)
+    if (!is_node_ready())
     {
         return;
     }
-    // update data only if something really changed.
-    m_updateRequired = false;
     m_helpersGeometry->clear_surfaces();
-    
-    Ref<StandardMaterial3D> material;// = memnew(StandardMaterial3D);
-    material.instantiate();
-    material->set_albedo(Color::hex(0x22FF22FF));
-    material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
 
-    for (auto& tt : m_tipTargets)
+    if (m_enabled)
     {
-        AddDashedLine(tt.tip, tt.target);
-        // m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
-        // m_helpersGeometry->surface_add_vertex(tt.tip);
-        // m_helpersGeometry->surface_add_vertex(tt.target);
-        // m_helpersGeometry->surface_end();
-    }// 
+        // visualize skeleton structure
+        for (const auto& chain : m_chainVisualData)
+        {
+            assert(chain.chain.size() > 1);
+            // Draw the chain
+            DrawLine(chain.chain, m_chainLineMaterial);
 
-    // AddRootBoneMarker();
-    // for (const auto& constraint : m_boneInfoArray)
-    // {
-    //     AddConstraint(constraint);
-    // }
-    // AddTipMarker();
-    // AddDirectionLine();
-    // AddDebugLines();
-}
+            // Add major chain markers to the beginning and the end of the chain
+            DrawStartMarker(chain.start);
+            DrawEndMarker(chain.chain.back(), chain.chain[chain.chain.size() - 2]);
 
-void VisualHelper::UpdateTipTargetInfo(const std::list<TipTarget>& tips)
-{
-    m_tipTargets.clear();
-    for (auto& tt : tips)
-    {
-        m_tipTargets.emplace_back(tt);
+            // If chain is targeting to another bone, show target marker
+            DrawTargetMarker(Transform3D(chain.chain.back().basis, chain.target));
+
+            // Draw line between the tip and the target of the chain
+            DrawDashedLine(chain.chain.back().origin, chain.target, m_targetLineMaterial);
+        }
+
+        // visualize joint constraints
+        for (const auto& constraint : m_boneConstraintData)
+        {
+            float radius = constraint.flexibility * m_radiusJoint;
+            Vector3 minAngles = grad2rad(constraint.minAngles);
+            Vector3 maxAngles = grad2rad(constraint.maxAngles);
+
+            DrawArc(constraint.position, radius, minAngles.x, maxAngles.x, Vector3(1, 0, 0), Vector3(0, 1, 0), m_jointMarkerMaterials[0]);
+            DrawArc(constraint.position, radius, minAngles.y, maxAngles.y, Vector3(0, 1, 0), Vector3(0, 0, 1), m_jointMarkerMaterials[1]);
+            DrawArc(constraint.position, radius, minAngles.z, maxAngles.z, Vector3(0, 0, 1), Vector3(0, 1, 0), m_jointMarkerMaterials[2]);
+        }
     }
-    m_updateRequired = true;
 }
 
-void VisualHelper::AddRootBoneMarker()
+void VisualHelper::AddChain(const ChainVisualData& visualData)
 {
-    static std::vector<Vector3> rectangleVertices = {Vector3{1, 0, 1}, {1, 0, -1}, {-1, 0, -1}, {-1, 0, 1}, {1, 0, 1}};
-    LineStripFromVector(rectangleVertices, m_boneInfoArray.front().position, m_radiusRoot, Color::hex(0xFF22FFFF));
+    m_chainVisualData.emplace_back(visualData);
 }
 
-void VisualHelper::AddTipMarker()
+void VisualHelper::AddBoneConstraint(const BoneInfo& constraintData) 
+{
+    m_boneConstraintData.emplace_back(constraintData);
+}
+
+void VisualHelper::DrawStartMarker(const Transform3D& point)
+{
+    static std::vector<Vector3> circularVertices;
+    if (circularVertices.empty())
+    {
+        for (size_t i = 0; i < m_pointsPerMarker; ++i)
+        {
+            circularVertices.emplace_back(Vector3{sinf(2 * Math_PI * i/(float)m_pointsPerMarker), 0, cosf(2 * Math_PI * i/(float)m_pointsPerMarker)});
+        }
+        circularVertices.push_back(circularVertices.front());
+    }
+
+    DrawLineShape(circularVertices, point, m_radiusRoot, m_startMarkerMaterial);
+}
+
+void VisualHelper::DrawEndMarker(const Transform3D& position, const Transform3D& orientation)
 {
     static std::vector<Vector3> arrowVertices = {Vector3{0, -1, 0}, {0.5, -1, 0}, {0, 0, 0}, {-0.5, -1, 0}, {0, -1, 0}, {0, -1, 0.5}, {0, 0, 0}, {0, -1, -0.5}, {0,-1,0}};
-    assert(m_boneInfoArray.size() > 1);
+
     //the transform of the tip consists of position of the last joint and orientation of pre-last bone
-    Transform3D tipPosition = Transform3D(m_boneInfoArray[m_boneInfoArray.size() - 2].position.basis, m_boneInfoArray.back().position.origin);
-    LineStripFromVector(arrowVertices, tipPosition, m_radiusRoot, Color::hex(0x22FF22FF));
+    Transform3D tipPosition = Transform3D(orientation.basis, position.origin);
+    DrawLineShape(arrowVertices, tipPosition, m_radiusRoot, m_endMarkerMaterial);
 }
 
-void VisualHelper::LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, float scale, Color color)
+void VisualHelper::DrawTargetMarker(const Transform3D& point)
 {
-    Ref<StandardMaterial3D> material;
-    material.instantiate();
-    material->set_albedo(color);
-    material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
+    static std::vector<Vector3> rectangleVertices = {Vector3{0, 0, 0}, {1, 0, 0}, {0, 0, 0}, {-1, 0, 0}, 
+                                                            {0, 0, 0}, {0, 1, 0}, {0, 0, 0}, {0, -1, 0},
+                                                            {0, 0, 0}, {0, 0, 1}, {0, 0, 0}, {0, 0, -1}};
 
-    m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
-    for (const auto& vertex : strip)
-    {
-        m_helpersGeometry->surface_add_vertex(position.xform(scale * vertex));
-    }
-    m_helpersGeometry->surface_end();
+    DrawLineShape(rectangleVertices, point, m_radiusRoot/2.0, m_targetMarkerMaterial);
 }
 
-void VisualHelper::AddConstraint(const BoneInfo& constraint)
-{
-    AddConstraintMarker(constraint.minAngles.x, constraint.maxAngles.x, constraint.position, constraint.flexibility, {0,0,0}, Color::hex(0xFF0000FF));
-    AddConstraintMarker(constraint.minAngles.y, constraint.maxAngles.y, constraint.position, constraint.flexibility, {0,1,0}, Color::hex(0x55FF55FF));
-    AddConstraintMarker(constraint.minAngles.z, constraint.maxAngles.z, constraint.position, constraint.flexibility, {1,0,0}, Color::hex(0x0000FFFF));
-}
-
-void VisualHelper::AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, float flexibility, const Vector3& axis, Color color)
-{
-    Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
-    material->set_albedo(color);
-    material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
-    m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
-
-    bool needRotation = axis.length_squared() > LightIK::EPSILON;
-
-    for (size_t i = 0; i < m_pointsPerMarker; ++i)
-    {
-        float t         = i / (m_pointsPerMarker - 1.f);
-        float pos       = minAngle * t + maxAngle * (1 - t);
-        Vector3 vertex  = flexibility * m_radiusJoint * Vector3{glm::sin(pos), glm::cos(pos), 0.f};
-        if (needRotation)
-        {
-            vertex.rotate(axis, glm::pi<float>()/2.f);
-        }
-        vertex = position.xform(vertex);
-        m_helpersGeometry->surface_add_vertex(vertex);
-    }
-    m_helpersGeometry->surface_end();
-}
-
-void VisualHelper::AddDashedLine(const Vector3& from, const Vector3& to)
+void VisualHelper::DrawDashedLine(const Vector3& from, const Vector3& to, Ref<StandardMaterial3D>& material)
 {
     // setup the material
-    Ref<StandardMaterial3D> material;
-    material.instantiate();
-    material->set_albedo(Color::hex(0xFFaa55FF));
-    material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
-
     Vector3 direction = to - from;
     float distance = direction.length();
     direction.normalize();
@@ -220,14 +153,57 @@ void VisualHelper::AddDashedLine(const Vector3& from, const Vector3& to)
     m_helpersGeometry->surface_end();
 }
 
-void VisualHelper::AddDebugLines()
+void VisualHelper::DrawLine(const std::vector<Transform3D>& line, Ref<StandardMaterial3D>& material)
 {
-    //the transform of the tip consists of position of the last joint and orientation of pre-last bone
-    Transform3D offset = Transform3D();
-    for (const auto& line : m_debugLines)
+    m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
+    for (const auto& vertex : line)
     {
-        LineStripFromVector(line, offset, 1, Color::hex(0xAAAA22FF));
+        m_helpersGeometry->surface_add_vertex(vertex.origin);
     }
+    m_helpersGeometry->surface_end();
+}
+
+void VisualHelper::DrawLineShape(const std::vector<Vector3>& shape, const Transform3D& position, float scale, Ref<StandardMaterial3D>& material)
+{
+    m_helpersGeometry->surface_begin(Mesh::PrimitiveType::PRIMITIVE_LINE_STRIP, material);
+    for (const auto& vertex : shape)
+    {
+        m_helpersGeometry->surface_add_vertex(position.xform(scale * vertex));
+    }
+    m_helpersGeometry->surface_end();
+}
+
+void VisualHelper::DrawArc(const Transform3D& center, float radius, float minAngle, float maxAngle, Vector3 axis, Vector3 direction, Ref<StandardMaterial3D>& material)
+{
+    Vector3 minAxis         = direction.rotated(axis, minAngle);
+    float step              = (maxAngle - minAngle)/m_pointsPerMarker;
+    std::vector<Vector3> arc = {Vector3(0,0,0), minAxis};
+    for (size_t i = 0; i < m_pointsPerMarker; ++i)
+    {
+        Vector3 point = minAxis.rotated(axis, step * i);
+        arc.emplace_back(point);
+        arc.emplace_back(Vector3(0,0,0));
+    }
+
+    DrawShape(arc, center, radius, material, Mesh::PrimitiveType::PRIMITIVE_TRIANGLE_STRIP);
+}
+
+void VisualHelper::DrawShape(const std::vector<Vector3>& shape, const Transform3D& position, float scale, Ref<StandardMaterial3D>& material, Mesh::PrimitiveType primitive)
+{
+    m_helpersGeometry->surface_begin(primitive, material);
+    for (const auto& vertex : shape)
+    {
+        m_helpersGeometry->surface_add_vertex(position.xform(scale * vertex));
+    }
+    m_helpersGeometry->surface_end();
+}
+
+void VisualHelper::MakeMaterial(Ref<StandardMaterial3D>& material, Color color)
+{
+    material.instantiate();
+    material->set_albedo(color);
+    material->set_shading_mode(BaseMaterial3D::ShadingMode::SHADING_MODE_UNSHADED);
+    material->set_cull_mode(BaseMaterial3D::CULL_DISABLED);
 }
 
 }

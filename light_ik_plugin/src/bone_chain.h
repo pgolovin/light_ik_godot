@@ -20,21 +20,23 @@ class BoneChain : public Resource
     GDCLASS(BoneChain, Resource)  
     DEFINE_PROPERTY(String, root_bone);
     DEFINE_PROPERTY(String, tip_bone);
+    DEFINE_PROPERTY(float, leaf_bone_length);
     
 public:  
     void _validate_property(godot::PropertyInfo& info); 
     void _ready(Skeleton3D* solver);
     
-    bool IsReady() const                { return m_skeleton;            }
+    bool IsReady() const                        { return m_skeleton;            }
     bool IsDirty();
 
-    const String& GetRootBone() const   { return m_rootBoneName;        }
-    const String& GetTipBone()  const   { return m_tipBoneName;         }
+    const String& GetRootBone() const           { return m_rootBoneName;        }
+    const String& GetTipBone()  const           { return m_tipBoneName;         }
+    const real_t  GetLeafBoneLength() const     { return m_leafBoneLength;      }
 
 protected:  
     void ValidateRootBone(PropertyInfo& info);
     void ValidateTipBone(PropertyInfo& info);
-    void SetDirty(bool dirty)           { m_dirty = dirty || m_dirty;   }
+    void SetDirty(bool dirty)                   { m_dirty = dirty || m_dirty;   }
     
     static void _bind_methods();
 
@@ -42,6 +44,8 @@ protected:
     
     String                  m_rootBoneName;
     String                  m_tipBoneName;
+    real_t                  m_leafBoneLength = 1;
+
     bool                    m_dirty = false;
 };
 

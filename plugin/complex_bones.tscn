@@ -23,12 +23,13 @@ bone = "left.ankle"
 [node name="complex_bones" instance=ExtResource("1_k8iyh")]
 
 [node name="LightIKPlugin" type="LightIKPlugin" parent="Armature/Skeleton3D" index="0"]
-help_show_helpers = true
+simulate = true
+helpers_show_helpers = true
 chains_bone_chains = Array[BoneChain]([SubResource("ChainIKTarget_k8iyh"), SubResource("ChainIKBoneLink_k8iyh"), SubResource("ChainIKTarget_25apt")])
 constraints_constraints_array = Array[JointConstraints]([SubResource("JointConstraints_k8iyh")])
 
 [node name="LeftLegTarget" type="Marker3D" parent="." index="1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.1856911, -6.301704, -1.0314023)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5408072, -3.6710334, -1.0314023)
 
 [node name="RightLegTarget" type="Marker3D" parent="." index="2"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5361083, -5.9762793, 0.7781491)

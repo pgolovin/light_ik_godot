@@ -12,14 +12,6 @@ namespace godot
 class ImmediateMesh;
 class StandardMaterial3D;
 
-struct BoneInfo
-{
-    Transform3D position;
-    Vector3 minAngles{0,0,0};
-    Vector3 maxAngles{0,0,0};
-    float   flexibility = 1;
-    bool    constrained = false;
-};
 
 class VisualHelper : public MeshInstance3D
 {
@@ -31,45 +23,71 @@ public:
     VisualHelper();
     ~VisualHelper();
 
-    void SetConstraintsInfo(const TypedArray<JointConstraints>& info, const std::vector<Transform3D>& bones);
-    void SetTargetPosition(const Transform3D& skeletonOrigin, const Transform3D& target);
-    size_t AddDebugLine(const std::vector<Vector3>& line, size_t index = 0xFFFFFF);
-
-    struct TipTarget
-    {
-        Vector3 tip;
-        Vector3 target;
-    };
-
-    void UpdateTipTargetInfo(const std::list<TipTarget>& tips);
-
 public: // godot overrides
     void _ready() override;
     void _process(double delta) override;
 
+    struct ChainVisualData
+    {
+        std::vector<Transform3D> chain;
+        Transform3D start;
+        Vector3 target;
+        bool hasTarget = false;
+    };
+    void ResetChainData()                                   { m_chainVisualData.clear();        }
+    void AddChain(const ChainVisualData& visualData);
+
+    
+    struct BoneInfo
+    {
+        Transform3D position;
+        Vector3 minAngles{0,0,0};
+        Vector3 maxAngles{0,0,0};
+        real_t  flexibility = 1;
+        bool    constrained = false;
+    };
+    void ResetBoneConstraintsData()                         { m_boneConstraintData.clear();     }
+    void AddBoneConstraint(const BoneInfo& constraintData);
+
+    void SetRootMarkerRadius(float markerRadius)            { m_radiusRoot = markerRadius;      }
+    float GetRootMarkerRadius() const                       { return m_radiusRoot;              }
+
+    void SetConstraintMarkerRadius(float markerRadius)      { m_radiusJoint = markerRadius;     }
+    float GetConstraintMarkerRadius() const                 { return m_radiusJoint;             }
+
+    void Enable(bool enabled)                               { m_enabled = enabled;              }
 private:
 
-    void AddRootBoneMarker();
-    void AddTipMarker();
-    void LineStripFromVector(const std::vector<Vector3>& strip, const Transform3D& position, float scale, Color color);
-    void AddConstraint(const BoneInfo& constraint);
-    void AddConstraintMarker(float minAngle, float maxAngle, const Transform3D& position, float flexibility, const Vector3& axis, Color color);
-    void AddDashedLine(const Vector3& from, const Vector3& to);
-    void AddDebugLines();
+    void DrawStartMarker(const Transform3D& point);
+    void DrawEndMarker(const Transform3D& position, const Transform3D& orientation);
+    void DrawTargetMarker(const Transform3D& position);
 
-    std::list<TipTarget>    m_tipTargets;
+    void DrawDashedLine(const Vector3& from, const Vector3& to, Ref<StandardMaterial3D>& material);
+    void DrawLine(const std::vector<Transform3D>& points, Ref<StandardMaterial3D>& material);
+    void DrawLineShape(const std::vector<Vector3>& shape, const Transform3D& position, float scale, Ref<StandardMaterial3D>& material);
+    void DrawShape(const std::vector<Vector3>& shape, const Transform3D& position, float scale, Ref<StandardMaterial3D>& material, Mesh::PrimitiveType primitive);
 
-    std::vector<BoneInfo>   m_boneInfoArray;
-    Ref<ImmediateMesh>      m_helpersGeometry;
+    void DrawArc(const Transform3D& center, float radius, float minAngle, float maxAngle, Vector3 axis, Vector3 direction, Ref<StandardMaterial3D>& material);
 
-    size_t                  m_pointsPerMarker = 32;
-    float                   m_radiusJoint = 0.2f;
-    float                   m_radiusRoot = 0.5f;
-    Transform3D             m_targetPosition;
-    Transform3D             m_skeletonPosition;
-    bool                    m_updateRequired{false};
+    void MakeMaterial(Ref<StandardMaterial3D>& material, Color color);
 
-     std::vector<std::vector<Vector3>> m_debugLines;
+    Ref<ImmediateMesh>              m_helpersGeometry;
+    
+    Ref<StandardMaterial3D>         m_targetLineMaterial;
+    Ref<StandardMaterial3D>         m_chainLineMaterial;
+    Ref<StandardMaterial3D>         m_startMarkerMaterial;
+    Ref<StandardMaterial3D>         m_endMarkerMaterial;
+    Ref<StandardMaterial3D>         m_targetMarkerMaterial;
+    Ref<StandardMaterial3D>         m_jointMarkerMaterials[3];
+
+    bool                            m_enabled       = false;
+    float                           m_radiusJoint   = 0.2f;
+    float                           m_radiusRoot    = 0.25f;
+    
+    std::vector<ChainVisualData>    m_chainVisualData;
+    std::vector<BoneInfo>           m_boneConstraintData;
+
+    const size_t                    m_pointsPerMarker = 32;
 };
 
 }

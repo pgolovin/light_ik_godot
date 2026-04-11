@@ -21,6 +21,7 @@ void BoneChain::_bind_methods()
 {
     DECLARE_UNSCOPED_PROPERTY(BoneChain, root_bone, (Variant::STRING));
     DECLARE_UNSCOPED_PROPERTY(BoneChain, tip_bone,  (Variant::STRING));
+    DECLARE_UNSCOPED_PROPERTY(BoneChain, leaf_bone_length,  (Variant::FLOAT));
 }
 
 void BoneChain::set_root_bone(const String& root_bone_name) 
@@ -45,6 +46,17 @@ void BoneChain::set_tip_bone(const String& tip_bone_name)
 String BoneChain::get_tip_bone() const 
 {
     return m_tipBoneName;
+}
+
+void BoneChain::set_leaf_bone_length(const real_t& leaf_bone_length) 
+{
+    SetDirty(m_leafBoneLength != leaf_bone_length);
+    m_leafBoneLength = leaf_bone_length;
+}
+
+real_t BoneChain::get_leaf_bone_length() const 
+{
+    return m_leafBoneLength;
 }
 
 void BoneChain::_ready(Skeleton3D* skeleton)

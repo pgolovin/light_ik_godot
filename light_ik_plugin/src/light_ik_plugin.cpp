@@ -34,10 +34,13 @@ static inline Quaternion FromLightIKQuaternion(const LightIK::Quaternion& quat)
 
 void LightIKPlugin::_bind_methods()
 {
-    ADD_GROUP("Helpers", "help_");
-    DECLARE_PROPERTY(LightIKPlugin, simulate,           (Variant::BOOL), help);
-    DECLARE_PROPERTY(LightIKPlugin, iterations_count,   (Variant::INT),  help);
-    DECLARE_PROPERTY(LightIKPlugin, show_helpers,       (Variant::BOOL), help);
+    DECLARE_UNSCOPED_PROPERTY(LightIKPlugin, simulate,           (Variant::BOOL));
+    DECLARE_UNSCOPED_PROPERTY(LightIKPlugin, iterations_count,   (Variant::INT));
+    
+    ADD_GROUP("Visualization", "helpers_");
+    DECLARE_PROPERTY(LightIKPlugin, show_helpers,       (Variant::BOOL), helpers);
+    DECLARE_PROPERTY(LightIKPlugin, marker_radius,      (Variant::FLOAT), helpers);
+    DECLARE_PROPERTY(LightIKPlugin, constraint_radius,  (Variant::FLOAT), helpers);
 
     ADD_GROUP("Bone Chains", "chains_");
 
@@ -80,13 +83,32 @@ bool LightIKPlugin::get_simulate() const
     return m_simulate; 
 }
 
-void LightIKPlugin::set_show_helpers(const bool& animate) 
+void LightIKPlugin::set_show_helpers(const bool& show) 
 {
-    m_showHelpers = animate;
+    m_showHelpers = show;
+    m_helper->Enable(show);
 }
 bool LightIKPlugin::get_show_helpers() const 
 {
     return m_showHelpers; 
+}
+
+void LightIKPlugin::set_marker_radius(const float& radius) 
+{
+    m_helper->SetRootMarkerRadius(radius);
+}
+float LightIKPlugin::get_marker_radius() const 
+{
+    return m_helper->GetRootMarkerRadius(); 
+}
+
+void LightIKPlugin::set_constraint_radius(const float& radius) 
+{
+    m_helper->SetConstraintMarkerRadius(radius);
+}
+float LightIKPlugin::get_constraint_radius() const 
+{
+    return m_helper->GetConstraintMarkerRadius(); 
 }
 
 void LightIKPlugin::set_bone_chains(const TypedArray<BoneChain>& array) 
@@ -184,6 +206,58 @@ void LightIKPlugin::_ready()
     BuildConstraints();
 }
 
+void LightIKPlugin::_process_modification()
+{
+    if (!is_inside_tree() || !is_node_ready() || !m_simulate || !m_controllerIK)
+    {
+        return;
+    }
+    
+    // Calculate positions of all external targets. The target position is calculated in skeleton relative coordinates
+    Transform3D skeletonPosition = get_skeleton()->get_global_transform();
+    for (auto& target : m_targets)
+    {
+        Vector3 localPosition = skeletonPosition.affine_inverse().xform(target.target->get_global_transform().origin);
+        target.pos->SetPosition(ToLightIKVector(localPosition));
+    }
+
+    // Process all chains
+    m_controllerIK->Update(m_iterationsCount);
+
+    // Update rotations of all bones
+    auto& deltas = m_controllerIK->GetDeltaRotations();
+    for (int32_t index = 0; index < deltas.size(); ++index)
+    {
+        if (deltas[index])
+        {
+            get_skeleton()->set_bone_pose_rotation(index, FromLightIKQuaternion(*deltas[index]));
+        }
+    }
+    
+    if constexpr (settingEnableDebugging)
+    {
+        // update chains visual data if required
+        if (m_showHelpers)
+        {
+            assert(get_skeleton());
+            UpdateChainsVisualData();
+            UpdateConstraintsVisualData();
+        }
+    }
+}
+
+void LightIKPlugin::_process(double delta)
+{
+    // Update data of visual helpers
+    if constexpr (settingAllowRuntimeModification)
+    {
+        if (godot::Engine::get_singleton()->is_editor_hint())
+        {
+            UpdateSkeletonParameters();
+        }
+    }
+}
+
 void LightIKPlugin::BuildChains()
 {
     m_targets.clear();
@@ -195,52 +269,14 @@ void LightIKPlugin::BuildChains()
         ChainIKTarget* chain = Object::cast_to<ChainIKTarget>(m_boneChains[i]);
         if (chain)
         {
-            // reset chain dirty state
-            chain->IsDirty();
-
-            // attach target to the bone
-            Node3D* targetNode = get_node<Node3D>(chain->GetTargetPath());
-            // build chain of bones
-            int32_t chainTipBone    = get_skeleton()->find_bone(chain->GetTipBone());
-            int32_t chainStartBone  = get_skeleton()->find_bone(chain->GetRootBone());
-            
-            // if parameters are invalid, no need to build this chain
-            if (!targetNode || chainTipBone < 0 || chainStartBone < 0 )
-            {
-                UtilityFunctions::push_error("The ", i, "th chain parameters are invalid");
-                continue;
-            }
-
-            auto target = m_targets.emplace_back( NodeTarget{targetNode, &m_controllerIK->CreateTarget()});
-            auto rootChain          = BuildRootChain(chainTipBone);
-
-            m_controllerIK->CreateIKChain(rootChain, chainStartBone, *target.pos);    
+            BuildTargetChain(*chain, i);
             continue;
         } 
     
         ChainIKBoneLink* link = Object::cast_to<ChainIKBoneLink>(m_boneChains[i]);
         if (link)
         {
-            // reset link dirty state
-            link->IsDirty();
-
-            // find bones in the skeleton to build the link
-            int32_t chainTipBone    = get_skeleton()->find_bone(link->GetTipBone());
-            int32_t chainStartBone  = get_skeleton()->find_bone(link->GetRootBone());
-            int32_t chainTargetBone = get_skeleton()->find_bone(link->GetTargetBone());
-
-            // if parameters are invalid, no need to build this chain
-            if (chainTargetBone < 0 || chainTipBone < 0 || chainStartBone < 0 )
-            {
-                UtilityFunctions::push_error("The ", i, "th chain parameters are invalid");
-                continue;            }
-
-            auto rootChain          = BuildRootChain(chainTipBone);
-            auto targetChain        = BuildRootChain(chainTargetBone);
-
-            m_controllerIK->CreatePassiveChain(targetChain);
-            m_controllerIK->CreateIKLink(rootChain, chainStartBone, chainTargetBone);
-
+            BuildLinkChain(*link, i);
             continue;
         }
 
@@ -248,65 +284,93 @@ void LightIKPlugin::BuildChains()
     }
 }
 
+void LightIKPlugin::BuildTargetChain(ChainIKTarget& chain, uint32_t index)
+{
+    // reset chain dirty state
+    chain.IsDirty();
+    
+    // build chain of bones
+    int32_t chainTipBone    = get_skeleton()->find_bone(chain.GetTipBone());
+    int32_t chainStartBone  = get_skeleton()->find_bone(chain.GetRootBone());
+    
+    // if parameters are invalid, no need to build this chain
+    if (chain.GetTargetPath().is_empty() || chainTipBone < 0 || chainStartBone < 0 )
+    {
+        UtilityFunctions::push_error("The ", index, "th chain cannot be created, parameters are invalid");
+        return;
+    }
+    // attach target to the bone
+    Node3D* targetNode = get_node<Node3D>(chain.GetTargetPath());
+
+    auto target             = m_targets.emplace_back( NodeTarget{targetNode, &m_controllerIK->CreateTarget()});
+    auto rootChain          = BuildRootChain(chainTipBone, chain.GetLeafBoneLength());
+
+    m_controllerIK->CreateIKChain(rootChain, chainStartBone, *target.pos);
+
+    if constexpr (settingEnableDebugging)
+    {
+        // Visualize chain information in both editor and player
+        AddChainLine(rootChain, chainStartBone, -1, m_controllerIK->GetSolversCount() - 1);
+    }
+}
+
+void LightIKPlugin::BuildLinkChain(ChainIKBoneLink& link, uint32_t index)
+{
+    // reset link dirty state
+    link.IsDirty();
+
+    // find bones in the skeleton to build the link
+    int32_t chainTipBone    = get_skeleton()->find_bone(link.GetTipBone());
+    int32_t chainStartBone  = get_skeleton()->find_bone(link.GetRootBone());
+    int32_t chainTargetBone = get_skeleton()->find_bone(link.GetTargetBone());
+
+    // if parameters are invalid, no need to build this chain
+    if (chainTargetBone < 0 || chainTipBone < 0 || chainStartBone < 0 )
+    {
+        UtilityFunctions::push_error("The ", index, " link cannot be created, parameters are invalid");
+        return;            
+    }
+
+    auto rootChain          = BuildRootChain(chainTipBone, link.GetLeafBoneLength());
+    auto targetChain        = BuildRootChain(chainTargetBone, 1.0);
+
+    m_controllerIK->CreatePassiveChain(targetChain);
+    m_controllerIK->CreateIKLink(rootChain, chainStartBone, chainTargetBone);
+    
+    if constexpr (settingEnableDebugging)
+    {
+        // Visualize chain information in both editor and player
+        AddChainLine(rootChain, chainStartBone, chainTargetBone, m_controllerIK->GetSolversCount() - 1);
+    }
+}
+
 void LightIKPlugin::BuildConstraints()
 {
     for (size_t i = 0; i < m_constraintsArray.size(); ++i)
     {
-        JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[i]);
-        
-    }
-
-    // if (UpdateBoneChain())
-    // {
-    //     UpdateIKData();
-    //     UpdateVisualHelperData();
-    // }
-}
-
-void LightIKPlugin::_process_modification()
-{
-    if (!is_inside_tree() || !is_node_ready() || !m_simulate || !m_controllerIK)
-    {
-        return;
-    }
-
-    Transform3D skeletonPosition = get_skeleton()->get_global_transform();
-
-    for (auto& target : m_targets)
-    {
-        Vector3 localPosition = skeletonPosition.affine_inverse().xform(target.target->get_global_transform().origin);
-        target.pos->SetPosition(ToLightIKVector(localPosition));
-    }
-
-    m_controllerIK->Update(m_iterationsCount);
-
-    auto& deltas = m_controllerIK->GetDeltaRotations();
-    for (int32_t index = 0; index < deltas.size(); ++index)
-    {
-        if (deltas[index])
+        JointConstraints* constraintData = Object::cast_to<JointConstraints>(m_constraintsArray[i]);
+        if (constraintData)
         {
-            get_skeleton()->set_bone_pose_rotation(index, FromLightIKQuaternion(*deltas[index]));
+            const ConstraintData& data = constraintData->GetConstraintData();
+            LightIK::Constraints constraint {
+                data.flexibility,
+                ToLightIKVector((2.0 * Math_PI) * data.angleMin / 360.0),
+                ToLightIKVector((2.0 * Math_PI) * data.angleMax / 360.0)
+            };
+            int32_t boneIndex = get_skeleton()->find_bone(data.boneName);
+            if (boneIndex >= 0)
+            {
+                m_controllerIK->SetConstraint(boneIndex, std::move(constraint));
+            }
+            else
+            {
+                UtilityFunctions::push_error("Constraint cannot be set. Bone ", data.boneName, " not found");    
+            }
         }
     }
 }
 
-void LightIKPlugin::_process(double delta)
-{
-    if (godot::Engine::get_singleton()->is_editor_hint())
-    {
-        Transform3D skeletonPosition = get_skeleton()->get_global_transform();
-
-        for (auto& target : m_targets)
-        {
-            Vector3 localPosition = skeletonPosition.affine_inverse().xform(target.target->get_global_transform().origin);
-            target.pos->SetPosition(ToLightIKVector(localPosition));
-        }
-        
-        UpdateEditorData(true);
-    }
-}
-
-std::vector<LightIK::BoneDesc> LightIKPlugin::BuildRootChain(int32_t tipBone)
+std::vector<LightIK::BoneDesc> LightIKPlugin::BuildRootChain(int32_t tipBone, real_t leafBoneLength)
 {
     assert(get_skeleton());
     std::vector<LightIK::BoneDesc> rootChain;
@@ -324,7 +388,7 @@ std::vector<LightIK::BoneDesc> LightIKPlugin::BuildRootChain(int32_t tipBone)
     {
         // If tip bone is the leaf bone, consider the length of the bone is 1
         LightIK::Quaternion rotation = ToLightIKQuaternion(get_skeleton()->get_bone_pose_rotation(tipBone));
-        rootChain.emplace_back(LightIK::BoneDesc{rotation, 1, tipBone});
+        rootChain.emplace_back(LightIK::BoneDesc{rotation, leafBoneLength, tipBone});
         tipBone = get_skeleton()->get_bone_parent(tipBone);
     }
 
@@ -350,171 +414,57 @@ std::vector<LightIK::BoneDesc> LightIKPlugin::BuildRootChain(int32_t tipBone)
     return rootChain;
 }
 
-// void LightIKPlugin::_validate_property(godot::PropertyInfo& info)
-// {
-//     // if (info.name == String("skeleton_root_bone"))
-//     // {
-//     //     ValidateRootBone(info);
-//     // }
-//     // else if(info.name == String("skeleton_tip_bone"))
-//     // {
-//     //     ValidateTipBone(info);
-//     // }
-// }
-
-////////////////////////////////////////////// Editor functions
-
-// void LightIKPlugin::ValidateRootBone(PropertyInfo& info)
-// {
-//     info.hint = PROPERTY_HINT_ENUM;
-//     if (!get_skeleton())
-//     {
-//         return;
-//     }
-//     if (-1 == m_tipBone)
-//     {
-//         // if tip is not selected allow to chose any bone for root
-//         info.hint_string = get_skeleton()->get_concatenated_bone_names();
-//         return;
-//     }
-
-//     assert(m_tipBone != m_rootBone);
-//     // list all parent bones from current tip (excluding) to skeleton root
-//     int32_t bone = get_skeleton()->get_bone_parent(m_tipBone);
-//     info.hint_string = "";
-//     while (bone >= 0)
-//     {
-//         // inverse addition to the list to keep the right order of the bones, from root to current
-//         info.hint_string = get_skeleton()->get_bone_name(bone) + "," + info.hint_string;
-//         bone = get_skeleton()->get_bone_parent(bone);
-//     }
-// }
-
-// void LightIKPlugin::ValidateTipBone(PropertyInfo& info)
-// {
-//     if (!get_skeleton())
-//     {
-//         return;
-//     }
-
-//     info.hint = PROPERTY_HINT_ENUM;
-//     if (-1 == m_rootBone)
-//     {
-//         // if root is not selected allow to chose any bone for tip
-//         info.hint_string = get_skeleton()->get_concatenated_bone_names();
-//         return;
-//     }
-    
-//     assert(m_tipBone != m_rootBone);
-//     std::stack<int32_t> boneStack;
-//     // allow to chose any child bone from the selected root
-//     const auto& bones = get_skeleton()->get_bone_children(m_rootBone);
-//     for (int32_t bone : bones)
-//     {
-//         boneStack.emplace(bone);
-//     }
-//     // create  the list of all child bones from current to all branch leaves
-//     // avoid recursion. create the stack of bones and process it.
-    
-//     while (!boneStack.empty())
-//     {
-//         int32_t rootBone = boneStack.top();
-//         boneStack.pop();
-//         // concatenate names of child bones into the single list
-//         info.hint_string += get_skeleton()->get_bone_name(rootBone) + ",";
-
-//         // put all child bones to stack to process them later
-//         const auto& bones = get_skeleton()->get_bone_children(rootBone);
-//         for (int32_t bone : bones)
-//         {
-//             boneStack.emplace(bone);
-//         }
-//     }
-// }
-
-// bool LightIKPlugin::UpdateBoneChain()
-// {
-//     bool found = false;
-//     int32_t bone = m_tipBone;
-//     m_boneChain.clear();
-//     // go through all bones in backward direction from tip to root to form the bone chain
-//     while (bone >= 0)
-//     {
-//             // create the actual bone chain for simulation from tip to begin bone
-//         m_boneChain.emplace(m_boneChain.begin(), bone);
-//         if (bone == m_rootBone)
-//         {
-//             // ok, we found both tip and bone, so chain is complete
-//             found = true;
-//             break;
-//         }
-//         bone = get_skeleton()->get_bone_parent(bone);
-//     }
-//     // ok chain is incomplete, so cleanup all trash that we had put into the chain array
-//     if (!found)
-//     {
-//         m_boneChain.clear();
-//     }
-//     return found;
-// }
-
-// void LightIKPlugin::MakeConstraints()
-// {
-//     if (m_boneChain.empty())
-//     {
-//         UtilityFunctions::push_error("Bones ", m_rootBoneName, " and ", m_tipBoneName, " are not on the same branch.");
-//         return;
-//     }
-//     // the last bone is the tip. it is not used for calculations
-//     m_constraintsArray.resize(m_boneChain.size() - 1);
-//     UpdateIKData();
-//     UpdateVisualHelperData();
-// }
-
-// void LightIKPlugin::UpdateIKData()
-// {
-//     m_lightIKCore.Reset();
-//     if (m_boneChain.empty())
-//     {
-//         return;
-//     }
-//     Vector3 base    = get_skeleton()->get_bone_global_pose(m_boneChain.front()).origin;
-//     auto q          = get_skeleton()->get_bone_pose_rotation(m_boneChain.front());
-
-//     m_lightIKCore.SetRootPosition(LightIK::Vector(base.x, base.y, base.z));
-//     for (size_t b = 1; b < m_boneChain.size(); ++b)
-//     {        
-//         q               = get_skeleton()->get_bone_pose_rotation(m_boneChain[b - 1]);
-//         Vector3 origin  = get_skeleton()->get_bone_global_pose(m_boneChain[b]).origin;
-//         real_t length   = (origin - base).length();
-//         m_lightIKCore.AddBone(length, LightIK::Quaternion{ (LightIK::real)q.w, (LightIK::real)q.x, (LightIK::real)q.y, (LightIK::real)q.z});
-//         base            = origin;
-
-//         JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[b - 1]);
-//         if (constraint)
-//         {
-//             LightIK::Constraints c{constraint->get_flexibility()};
-//             m_lightIKCore.SetConstraint(b - 1, std::move(c));
-//         }
-
-//     }
-//     m_lightIKCore.CompleteChain();
-// }
-
-void LightIKPlugin::UpdateVisualHelperData()
+void LightIKPlugin::UpdateChainsVisualData()
 {
-    // std::vector<Transform3D> bones;
-    
-    // int32_t bone = m_tipBone;
-    // // collect position and original direction of all bones in the chain
-    // for (int32_t boneId : m_boneChain)
-    // {
-    //     bones.emplace_back(get_skeleton()->get_bone_global_pose(boneId));
-    // }
-    // m_helper->SetConstraintsInfo(m_constraintsArray, bones);
+    // Provide the list of transforms that represents bones in a single chain
+    m_helper->ResetChainData();
+    VisualHelper::ChainVisualData chainData;
+    for (const auto& chain : m_debugChains)
+    {
+        chainData.chain.clear();
+        for (int32_t boneId : chain.indices)
+        {
+            chainData.chain.emplace_back(get_skeleton()->get_bone_global_pose(boneId));
+        }
+        chainData.chain.emplace_back(Transform3D(chainData.chain.back().basis, FromLightIKVector(m_controllerIK->GetTipPosition(chain.chainId))));
+        
+        chainData.start     = get_skeleton()->get_bone_global_pose(chain.startIndex);
+
+        chainData.target    = FromLightIKVector(m_controllerIK->GetTargetPosition(chain.chainId));
+        m_helper->AddChain(chainData);
+    }
 }
 
-void LightIKPlugin::UpdateEditorData(bool)
+void LightIKPlugin::UpdateConstraintsVisualData()
+{
+    // Provide information about bone constraints
+    m_helper->ResetBoneConstraintsData();
+    for (size_t i = 0; i < m_constraintsArray.size(); ++i)
+    {
+        JointConstraints* constraintData = Object::cast_to<JointConstraints>(m_constraintsArray[i]);
+        
+        if (constraintData) 
+        {
+            const auto& data = constraintData->GetConstraintData();
+            int32_t index = get_skeleton()->find_bone(data.boneName);
+            if (index < 0)
+            {
+                continue;
+            }
+            Basis localBasis;
+            int32_t parent = get_skeleton()->get_bone_parent(index);
+            if (parent >= 0)
+            {
+                localBasis = get_skeleton()->get_bone_global_pose(parent).basis;
+            }
+            Vector3 origin = get_skeleton()->get_bone_global_pose(index).origin;
+            VisualHelper::BoneInfo info{Transform3D(localBasis, origin), data.angleMin, data.angleMax, (real_t)data.flexibility, true};
+            m_helper->AddBoneConstraint(info);
+        }
+    }
+}
+
+void LightIKPlugin::UpdateSkeletonParameters()
 {
     bool chainsUpdated = false;
     for (size_t c = 0; c < m_boneChains.size(); ++c)
@@ -540,32 +490,20 @@ void LightIKPlugin::UpdateEditorData(bool)
     {
         BuildConstraints();
     }
+}
 
-    std::list<VisualHelper::TipTarget> tt;
-    for (size_t i = 0; i < m_controllerIK->GetSolversCount(); ++i)
+void LightIKPlugin::AddChainLine(std::vector<LightIK::BoneDesc> chain, int32_t startIndex, int32_t targetIndex, size_t chainId)
+{
+    auto& newDebugChain = m_debugChains.emplace_back();
+    for (const LightIK::BoneDesc& bone : chain)
     {
-        tt.emplace_back(VisualHelper::TipTarget{FromLightIKVector(m_controllerIK->GetTipPosition(i)), FromLightIKVector(m_controllerIK->GetTargetPosition(i))});
+        newDebugChain.indices.emplace_back(bone.boneIndex);
     }
-    m_helper->UpdateTipTargetInfo(tt);
+    newDebugChain.startIndex    = startIndex;
+    newDebugChain.targetIndex   = targetIndex;
+    newDebugChain.chainId       = chainId;
 
-    // Transform3D targetPosition = m_target ? m_target->get_global_transform() : Transform3D();
-    // m_helper->SetTargetPosition(get_skeleton()->get_global_transform(), targetPosition);
-
-    // // if array data was modified, request the update of constraints visualization
-    // if (constraintsUpdated)
-    // {
-    //     for (size_t i = 0; i < m_constraintsArray.size(); ++i)
-    //     {
-    //         JointConstraints* constraint = Object::cast_to<JointConstraints>(m_constraintsArray[i]);
-    //         if (constraint)
-    //         {
-    //             LightIK::Constraints c{constraint->get_flexibility()};
-    //             m_lightIKCore.SetConstraint(i, std::move(c));
-    //         }
-    //     }
-
-    //     UpdateVisualHelperData();
-    // }
+    assert(newDebugChain.indices.size());
 }
 
 }
