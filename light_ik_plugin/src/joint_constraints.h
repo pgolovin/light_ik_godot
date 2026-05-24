@@ -12,6 +12,8 @@ struct ConstraintData
     Vector3 angleMin{0,0,0};
     Vector3 angleMax{0,0,0};
     double  flexibility{1};  
+    int rotationOrder = 0;
+    int rotationDirection = 1;
 };
 
 class JointConstraints : public Resource
@@ -21,6 +23,9 @@ class JointConstraints : public Resource
     DEFINE_PROPERTY(Vector3, min_angle);
     DEFINE_PROPERTY(Vector3, max_angle);
     DEFINE_PROPERTY(double,  flexibility);
+
+    DEFINE_PROPERTY(int,  rotation_order);
+    DEFINE_PROPERTY(int,  rotation_direction);
 
 public:  
     bool IsDirty();

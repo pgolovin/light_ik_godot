@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cu5oe7ul6qe6g"
-path="res://.godot/imported/test_bone.glb-bb797c9473d4ef34189991f3aa581759.scn"
+uid="uid://cyuef7wlwvobx"
+path="res://.godot/imported/leg_bones2.glb-1d2704766079f81963ffe0bd281510fb.scn"
 
 [deps]
 
-source_file="res://test_bone.glb"
-dest_files=["res://.godot/imported/test_bone.glb-bb797c9473d4ef34189991f3aa581759.scn"]
+source_file="res://src/leg_bones2.glb"
+dest_files=["res://.godot/imported/leg_bones2.glb-1d2704766079f81963ffe0bd281510fb.scn"]
 
 [params]
 

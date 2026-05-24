@@ -41,10 +41,13 @@ public: // godot overrides
     struct BoneInfo
     {
         Transform3D position;
-        Vector3 minAngles{0,0,0};
-        Vector3 maxAngles{0,0,0};
-        real_t  flexibility = 1;
-        bool    constrained = false;
+        Basis       childBasis;
+        Quaternion  rotation;
+        int         mode = 0;
+        Vector3     minAngles{0,0,0};
+        Vector3     maxAngles{0,0,0};
+        real_t      flexibility = 1;
+        bool        constrained = false;
     };
     void ResetBoneConstraintsData()                         { m_boneConstraintData.clear();     }
     void AddBoneConstraint(const BoneInfo& constraintData);

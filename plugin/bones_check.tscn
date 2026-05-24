@@ -1,5 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://cowrfxsmihrds"]
-
-[ext_resource type="PackedScene" uid="uid://bxt1lhngqyqqt" path="res://BonesCheck.glb" id="1_8dv83"]
-
-[node name="BonesCheck" instance=ExtResource("1_8dv83")]

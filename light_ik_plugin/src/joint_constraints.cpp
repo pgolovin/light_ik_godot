@@ -11,6 +11,9 @@ void JointConstraints::_bind_methods()
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, min_angle,   Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, max_angle,   Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, flexibility, Variant::FLOAT);
+
+    DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_order,        "XZY:0,ZXY:1,YXZ:2");
+    DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_direction,    "CW:-1,CCW:1");
 }
 
 void JointConstraints::set_bone(const String& bone_name) 
@@ -57,6 +60,28 @@ void JointConstraints::set_flexibility(const double& stiffness)
 double JointConstraints::get_flexibility() const 
 {
     return m_constraint.flexibility;
+}
+
+void JointConstraints::set_rotation_order(const int& rotation_order) 
+{ 
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.rotationOrder != rotation_order);
+    m_constraint.rotationOrder = rotation_order;
+}
+
+int JointConstraints::get_rotation_order() const 
+{
+    return m_constraint.rotationOrder;
+}
+
+void JointConstraints::set_rotation_direction(const int& rotationDirection) 
+{ 
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.rotationDirection != rotationDirection);
+    m_constraint.rotationDirection = rotationDirection;
+}
+
+int JointConstraints::get_rotation_direction() const 
+{
+    return m_constraint.rotationDirection;
 }
 
 bool JointConstraints::IsDirty()

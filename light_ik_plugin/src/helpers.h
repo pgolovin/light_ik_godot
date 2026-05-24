@@ -13,3 +13,8 @@
     ClassDB::bind_method(D_METHOD(String("get_") + String(#name)), &class_name::get_##name); \
     ClassDB::bind_method(D_METHOD(String("set_") + String(#name)), &class_name::set_##name); \
     ADD_PROPERTY(PropertyInfo((property_type), String(#name)), (String("set_") + String(#name)), (String("get_") + String(#name)))
+
+#define DECLARE_UNSCOPED_ENUM_PROPERTY(class_name, name, property_list) \
+    ClassDB::bind_method(D_METHOD(String("get_") + String(#name)), &class_name::get_##name); \
+    ClassDB::bind_method(D_METHOD(String("set_") + String(#name)), &class_name::set_##name); \
+    ADD_PROPERTY(PropertyInfo(Variant::INT, String(#name), PROPERTY_HINT_ENUM, property_list), (String("set_") + String(#name)), (String("get_") + String(#name)))

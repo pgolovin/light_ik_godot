@@ -73,6 +73,9 @@ void VisualHelper::_process(double delta)
 
             // Draw line between the tip and the target of the chain
             DrawDashedLine(chain.chain.back().origin, chain.target, m_targetLineMaterial);
+
+            // Draw line between the root and the tip of the chain
+            DrawDashedLine(chain.start.origin, chain.chain.back().origin, m_endMarkerMaterial);
         }
 
         // visualize joint constraints

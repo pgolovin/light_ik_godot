@@ -256,6 +256,17 @@ void LightIKPlugin::_process(double delta)
             UpdateSkeletonParameters();
         }
     }
+
+    if constexpr (settingEnableDebugging)
+    {
+        // update chains visual data if required
+        if (m_showHelpers && !m_simulate)
+        {
+            assert(get_skeleton());
+            UpdateChainsVisualData();
+            UpdateConstraintsVisualData();
+        }
+    }
 }
 
 void LightIKPlugin::BuildChains()
@@ -355,7 +366,10 @@ void LightIKPlugin::BuildConstraints()
             LightIK::Constraints constraint {
                 data.flexibility,
                 ToLightIKVector((2.0 * Math_PI) * data.angleMin / 360.0),
-                ToLightIKVector((2.0 * Math_PI) * data.angleMax / 360.0)
+                ToLightIKVector((2.0 * Math_PI) * data.angleMax / 360.0),
+                LightIK::ConstraintType::Local,
+                (LightIK::ConstraintModes)data.rotationOrder,
+                (LightIK::ConstraintRotation)data.rotationDirection,
             };
             int32_t boneIndex = get_skeleton()->find_bone(data.boneName);
             if (boneIndex >= 0)
@@ -453,12 +467,25 @@ void LightIKPlugin::UpdateConstraintsVisualData()
             }
             Basis localBasis;
             int32_t parent = get_skeleton()->get_bone_parent(index);
+            Quaternion localRotation = get_skeleton()->get_bone_pose_rotation(index);
+            Transform3D bonePosition = get_skeleton()->get_bone_global_pose(index);
             if (parent >= 0)
             {
                 localBasis = get_skeleton()->get_bone_global_pose(parent).basis;
+
+                //TODO: dirty workaround, looks like basis of the first bone w/o parent is calculated incorrectly (based on rotation of the skeleton)
+                if (get_skeleton()->get_bone_parent(parent) < 0)
+                {
+                    localBasis = Basis() * localRotation;
+                }
             }
-            Vector3 origin = get_skeleton()->get_bone_global_pose(index).origin;
-            VisualHelper::BoneInfo info{Transform3D(localBasis, origin), data.angleMin, data.angleMax, (real_t)data.flexibility, true};
+            else 
+            {
+                //TODO: dirty workaround, looks like basis of the first bone w/o parent is calculated incorrectly (based on rotation of the skeleton)
+                bonePosition.basis = Basis() * localRotation;
+            }
+            
+            VisualHelper::BoneInfo info{Transform3D(localBasis, bonePosition.origin), bonePosition.basis, localRotation, data.rotationOrder, data.angleMin, data.angleMax, (real_t)data.flexibility, true};
             m_helper->AddBoneConstraint(info);
         }
     }
