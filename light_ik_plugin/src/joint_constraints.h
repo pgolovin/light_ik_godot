@@ -9,11 +9,12 @@ namespace godot
 struct ConstraintData
 {
     String  boneName;
-    Vector3 angleMin{0,0,0};
-    Vector3 angleMax{0,0,0};
-    double  flexibility{1};  
-    int rotationOrder = 0;
-    int rotationDirection = 1;
+    Vector3 angleMin        {0,0,0};
+    Vector3 angleMax        {0,0,0};
+    Vector3 center          {0,0,0};
+    double  flexibility     {1};  
+    int rotationOrder       = 0;
+    int rotationDirection   = 1;
 };
 
 class JointConstraints : public Resource
@@ -22,6 +23,7 @@ class JointConstraints : public Resource
     DEFINE_PROPERTY(String,  bone);
     DEFINE_PROPERTY(Vector3, min_angle);
     DEFINE_PROPERTY(Vector3, max_angle);
+    DEFINE_PROPERTY(Vector3, center);
     DEFINE_PROPERTY(double,  flexibility);
 
     DEFINE_PROPERTY(int,  rotation_order);

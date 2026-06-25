@@ -1,0 +1,158 @@
+[gd_scene load_steps=19 format=3 uid="uid://cxxkkxrqgmgg8"]
+
+[ext_resource type="PackedScene" uid="uid://op7acwo7tiqu" path="res://src/skeleton_base.glb" id="1_qvx6r"]
+
+[sub_resource type="ChainIKTarget" id="ChainIKTarget_qvx6r"]
+target = NodePath("../../../MarkerL")
+root_bone = "Hip.L"
+tip_bone = "Thumb.L"
+leaf_bone_length = 0.3
+
+[sub_resource type="ChainIKTarget" id="ChainIKTarget_r1y84"]
+target = NodePath("../../../MarkerR")
+root_bone = "Hip.R"
+tip_bone = "Thumb.R"
+leaf_bone_length = 0.3
+
+[sub_resource type="JointConstraints" id="JointConstraints_2l7d2"]
+bone = "Hip.R"
+min_angle = Vector3(-110, 0, -10)
+max_angle = Vector3(-90, 0, 10)
+flexibility = 0.1
+rotation_direction = -1
+
+[sub_resource type="JointConstraints" id="JointConstraints_r1y84"]
+bone = "Femur.R"
+min_angle = Vector3(-110, 0, -120)
+max_angle = Vector3(0, 0, 120)
+center = Vector3(-55, 0, 0)
+
+[sub_resource type="JointConstraints" id="JointConstraints_rkvf7"]
+bone = "Shin.R"
+min_angle = Vector3(0, 0, -170)
+rotation_order = 1
+
+[sub_resource type="JointConstraints" id="JointConstraints_2wlbi"]
+bone = "Ankle.R"
+min_angle = Vector3(0, -10, 0)
+flexibility = 0.25
+
+[sub_resource type="JointConstraints" id="JointConstraints_7hq60"]
+bone = "Foot.R"
+min_angle = Vector3(0, 0, 70)
+max_angle = Vector3(0, 0, 110)
+flexibility = 0.5
+
+[sub_resource type="JointConstraints" id="JointConstraints_8ixac"]
+bone = "Thumb.R"
+
+[sub_resource type="JointConstraints" id="JointConstraints_qvx6r"]
+bone = "Hip.L"
+min_angle = Vector3(90, -90, -10)
+max_angle = Vector3(110, 90, 10)
+flexibility = 0.1
+
+[sub_resource type="JointConstraints" id="JointConstraints_4h1gd"]
+bone = "Femur.L"
+min_angle = Vector3(0, 0, -120)
+max_angle = Vector3(110, 0, 120)
+center = Vector3(55, 0, 0)
+
+[sub_resource type="JointConstraints" id="JointConstraints_m01qu"]
+bone = "Shin.L"
+min_angle = Vector3(0, 0, -170)
+rotation_order = 1
+
+[sub_resource type="JointConstraints" id="JointConstraints_g3mnv"]
+bone = "Ankle.L"
+max_angle = Vector3(0, 10, 0)
+flexibility = 0.25
+
+[sub_resource type="JointConstraints" id="JointConstraints_0506h"]
+bone = "Foot.L"
+min_angle = Vector3(0, 0, 70)
+max_angle = Vector3(0, 0, 110)
+
+[sub_resource type="JointConstraints" id="JointConstraints_yytye"]
+bone = "Thumb.L"
+
+[sub_resource type="Animation" id="Animation_i600e"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MarkerL:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -4, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("MarkerR:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -2, -1)]
+}
+
+[sub_resource type="Animation" id="Animation_lianf"]
+resource_name = "step"
+length = 4.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MarkerL:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 1, 2, 3, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -4, 1), Vector3(2, -4, 1), Vector3(0, -2, 1), Vector3(-2, -4, 1), Vector3(0, -4, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("MarkerR:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 1, 2, 3, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -2, -1), Vector3(-2, -4, -1), Vector3(0, -4, -1), Vector3(2, -4, -1), Vector3(0, -2, -1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_fsdj2"]
+_data = {
+&"RESET": SubResource("Animation_i600e"),
+&"step": SubResource("Animation_lianf")
+}
+
+[node name="skeleton_base" instance=ExtResource("1_qvx6r")]
+
+[node name="LightIKPlugin" type="LightIKPlugin" parent="Armature_002/Skeleton3D" index="0"]
+helpers_show_helpers = true
+chains_bone_chains = Array[BoneChain]([SubResource("ChainIKTarget_qvx6r"), SubResource("ChainIKTarget_r1y84")])
+constraints_constraints_array = Array[JointConstraints]([SubResource("JointConstraints_2l7d2"), SubResource("JointConstraints_r1y84"), SubResource("JointConstraints_rkvf7"), SubResource("JointConstraints_2wlbi"), SubResource("JointConstraints_7hq60"), SubResource("JointConstraints_8ixac"), SubResource("JointConstraints_qvx6r"), SubResource("JointConstraints_4h1gd"), SubResource("JointConstraints_m01qu"), SubResource("JointConstraints_g3mnv"), SubResource("JointConstraints_0506h"), SubResource("JointConstraints_yytye")])
+
+[node name="MarkerL" type="Marker3D" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4, 1)
+
+[node name="MarkerR" type="Marker3D" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -1)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." index="3"]
+libraries = {
+&"": SubResource("AnimationLibrary_fsdj2")
+}
+autoplay = "step"

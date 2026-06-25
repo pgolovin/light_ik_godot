@@ -10,6 +10,7 @@ void JointConstraints::_bind_methods()
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, bone,        Variant::STRING);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, min_angle,   Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, max_angle,   Variant::VECTOR3);
+    DECLARE_UNSCOPED_PROPERTY(JointConstraints, center,      Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, flexibility, Variant::FLOAT);
 
     DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_order,        "XZY:0,ZXY:1,YXZ:2");
@@ -48,6 +49,17 @@ void JointConstraints::set_max_angle(const Vector3& max_angle)
 Vector3 JointConstraints::get_max_angle() const 
 {
     return m_constraint.angleMax;
+}
+
+Vector3 JointConstraints::get_center() const 
+{
+    return m_constraint.center;
+}
+
+void JointConstraints::set_center(const Vector3& center)
+{
+    m_dirtyFlag = m_dirtyFlag || (m_constraint.center != center);
+    m_constraint.center = center; 
 }
 
 void JointConstraints::set_flexibility(const double& stiffness) 

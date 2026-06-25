@@ -316,7 +316,7 @@ void LightIKPlugin::BuildTargetChain(ChainIKTarget& chain, uint32_t index)
     auto target             = m_targets.emplace_back( NodeTarget{targetNode, &m_controllerIK->CreateTarget()});
     auto rootChain          = BuildRootChain(chainTipBone, chain.GetLeafBoneLength());
 
-    m_controllerIK->CreateIKChain(rootChain, chainStartBone, *target.pos);
+    m_controllerIK->CreateIKChain(rootChain, chainStartBone, 0, *target.pos);
 
     if constexpr (settingEnableDebugging)
     {

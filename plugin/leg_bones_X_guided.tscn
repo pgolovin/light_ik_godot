@@ -6,13 +6,13 @@
 target = NodePath("../../../Marker3D")
 root_bone = "Hip"
 tip_bone = "Thumb"
-leaf_bone_length = 0.3
+leaf_bone_length = 0.25
 
 [sub_resource type="JointConstraints" id="JointConstraints_2uhv0"]
 bone = "Hip"
-min_angle = Vector3(-80, 0, -2)
-max_angle = Vector3(-100, 0, 2)
-flexibility = 0.2
+min_angle = Vector3(-80, 0, -5)
+max_angle = Vector3(-100, 0, 0)
+flexibility = 0.1
 
 [sub_resource type="JointConstraints" id="JointConstraints_0su2l"]
 bone = "femur"
@@ -22,13 +22,13 @@ max_angle = Vector3(0, 0, 120)
 [sub_resource type="JointConstraints" id="JointConstraints_kyjc2"]
 bone = "Shin"
 min_angle = Vector3(0, 0, -170)
-max_angle = Vector3(0, 0, -1)
 rotation_order = 1
 rotation_direction = -1
 
 [sub_resource type="JointConstraints" id="JointConstraints_u5u1a"]
 bone = "Ankle"
 max_angle = Vector3(0, 10, 0)
+flexibility = 0.333
 
 [sub_resource type="JointConstraints" id="JointConstraints_hxbip"]
 bone = "Foot"

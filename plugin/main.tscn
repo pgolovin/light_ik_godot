@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://bcaesl7oa2s1u"]
 
 [ext_resource type="PackedScene" uid="uid://dlj03rmo2y74m" path="res://complex_bones.tscn" id="1_ig7tw"]
-[ext_resource type="PackedScene" uid="uid://b0k1a6lanir6t" path="res://src/leg_bones.glb" id="2_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://cxxkkxrqgmgg8" path="res://skeleton_base.tscn" id="3_1bvp3"]
 [ext_resource type="PackedScene" uid="uid://cyuef7wlwvobx" path="res://src/leg_bones2.glb" id="3_h2yge"]
 
 [node name="Node3D" type="Node3D"]
@@ -14,8 +14,8 @@ fov = 37.8493
 [node name="complex_bones" parent="." instance=ExtResource("1_ig7tw")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.3314667, 0)
 
-[node name="leg_bones2" parent="." instance=ExtResource("2_0xm2m")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5018158, 2.3841858e-07, 6.1209364)
-
 [node name="leg_bones3" parent="." instance=ExtResource("3_h2yge")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1321125, 0, 4.237248)
+
+[node name="skeleton_base2" parent="." instance=ExtResource("3_1bvp3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8506408, 3.8677206, -2.3674688)
