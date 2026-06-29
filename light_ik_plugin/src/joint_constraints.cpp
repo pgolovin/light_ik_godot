@@ -8,13 +8,14 @@ namespace godot
 void JointConstraints::_bind_methods()
 {
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, bone,        Variant::STRING);
+    
+    DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_order,        "PassThrough:0,TwistSwing:1,XZY:2,ZXY:3,YXZ:4,YZX:5,XYZ:6");
+    DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_direction,    "CW:-1,CCW:1");
+
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, min_angle,   Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, max_angle,   Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, center,      Variant::VECTOR3);
     DECLARE_UNSCOPED_PROPERTY(JointConstraints, flexibility, Variant::FLOAT);
-
-    DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_order,        "XZY:0,ZXY:1,YXZ:2");
-    DECLARE_UNSCOPED_ENUM_PROPERTY(JointConstraints, rotation_direction,    "CW:-1,CCW:1");
 }
 
 void JointConstraints::set_bone(const String& bone_name) 

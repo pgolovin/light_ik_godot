@@ -364,12 +364,11 @@ void LightIKPlugin::BuildConstraints()
         {
             const ConstraintData& data = constraintData->GetConstraintData();
             LightIK::Constraints constraint {
+                (LightIK::ConstraintModes)data.rotationOrder,
+                (LightIK::ConstraintRotation)data.rotationDirection,
                 data.flexibility,
                 ToLightIKVector((2.0 * Math_PI) * data.angleMin / 360.0),
                 ToLightIKVector((2.0 * Math_PI) * data.angleMax / 360.0),
-                LightIK::ConstraintType::Local,
-                (LightIK::ConstraintModes)data.rotationOrder,
-                (LightIK::ConstraintRotation)data.rotationDirection,
             };
             int32_t boneIndex = get_skeleton()->find_bone(data.boneName);
             if (boneIndex >= 0)
